@@ -1,0 +1,310 @@
+# Makefile for PGPLOT use with Microsoft Fortran	AFT 91-Jun-27
+#
+# This generates the PGPLOT binary files (libraries and demos) in the
+# current default directory (which need not be the source directory).
+#
+#	Directory containing source code
+SRC=..
+SRCDIR=$(SRC)\pgplot\src
+#	Directory containing demo programs
+DEMODIR=$(SRC)\pgplot\examples
+#	Directory containing font stuff
+FONTDIR=$(SRC)\pgplot\fonts
+#	Directory containing system-dependent code
+SYSDIR=$(SRC)\pgplot\sys_dos
+#	Directory to put the libraries
+LIBDIR=.
+#       Directory for Drivers
+DRVDIR=$(SRC)\pgplot\drivers
+#	Fortran compiler
+FCOMPL=FL
+FFLAGC=/Gt
+#	C compiler
+CCOMPL=
+CFLAGC=
+# Libraries required for linking
+LIBS   = .\PGPLOT+GRAPHICS+LLIBFORE
+
+#	Rules for compiling Fortran
+.SUFFIXES: .F .FOR .OBJ
+
+{SRC\}.FOR.OBJ:
+	$(FCOMPL) /c $(FFLAGC) src\$<
+
+{SRC\}.F.OBJ:
+	COPY src\$*.F $*.FOR
+	$(FCOMPL) /c $(FFLAGC) $*.FOR
+	DEL $*.FOR
+
+all: PGPLOT.LIB GRFONT.DAT PROG
+
+#-----------------------------------------------------------------------
+# Routine lists:
+#   PG_ROUTINES: basic PGPLOT routines (Fortran-77)
+#   PG_NON_STANDARD: non-Fortran-77 aliases for basic routines
+#   GR_ROUTINES: support routines, not called directly by applications
+#	(Fortran-77)
+#   SYSTEM_ROUTINES: potentially non-portable routines, usually
+#	operating-system dependent
+#-----------------------------------------------------------------------
+PGPLOT.LIB:: $(SRC)\pgplot.inc $(SRC)\grpckg1.inc
+	REM
+PGPLOT.LIB:: pgask.obj pgbbuf.obj pgbeg.obj pgbin.obj pgbox.obj pgbox1.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB::pgcn01.obj pgcnsc.obj pgconb.obj pgcons.obj pgcont.obj pgconx.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgcp.obj pgcurs.obj pgdraw.obj pgebuf.obj pgend.obj pgenv.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB::pgerrb.obj pgerrx.obj pgerry.obj pgetxt.obj pgfunt.obj pgfunx.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB::pgfuny.obj pggray.obj pghi2d.obj pghis1.obj pghist.obj pgiden.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pglab.obj pglcur.obj pgldev.obj pglen.obj pgline.obj pgmove.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgmtxt.obj pgncur.obj pgnpl.obj pgnumb.obj pgolin.obj pgpage.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgpap.obj pgpixl.obj pgpnts.obj pgpoly.obj pgpt.obj pgptxt.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgqcf.obj pgqch.obj pgqci.obj pgqcol.obj pgqcr.obj pgqfs.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgqinf.obj pgqls.obj  pgqlw.obj  pgqpos.obj pgqvp.obj  pgqwin.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgrect.obj pgrnd.obj  pgrnge.obj pgscf.obj  pgsch.obj  pgsci.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgscr.obj  pgsfs.obj  pgshls.obj pgsls.obj  pgslw.obj  pgsvp.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgswin.obj pgtbox.obj pgtext.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgupdt.obj pgvsiz.obj pgvstd.obj pgvw.obj  pgwnad.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgsave.obj pgscrn.obj pgqvsz.obj pgqcs.obj  pgarro.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgsah.obj pgcirc.obj pgqah.obj pgvect.obj pgwedg.obj
+	LIB PGPLOT -+$?;
+
+PGPLOT.LIB:: pgadvanc.obj pgbegin.obj  pgcurse.obj  pglabel.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgmtext.obj   pgncurse.obj pgpaper.obj  pgpoint.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgptext.obj   pgvport.obj  pgvsize.obj  pgvstand.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgwindow.obj  pgqtxt.obj  pgqtbg.obj  pgstbg.obj  pgsubp.obj
+	LIB PGPLOT -+$?;
+
+PGPLOT.LIB:: grarea.obj grbpic.obj grchsz.obj grclip.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grclos.obj grclpl.obj grcurs.obj grdot0.obj grdtyp.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: gresc.obj gretxt.obj grfa.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grgray.obj grgrgr.obj grgrps.obj grqci.obj grqdev.obj grqdt.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grqfnt.obj grqcol.obj grqls.obj  grqlw.obj grqpos.obj grqtyp.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grldev.obj grlen.obj grlin0.obj grlin1.obj grlin2.obj grlin3.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grlina.obj grmcur.obj grmker.obj grmova.obj gropen.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grpage.obj grpars.obj grrect.obj grscr.obj grslct.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grsetc.obj grsci.obj grsfnt.obj grsls.obj grslw.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grsets.obj grsize.obj grsyds.obj grsymk.obj grsyxd.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grterm.obj grtext.obj grtoup.obj grtrn0.obj grtxy0.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grvct0.obj grxhls.obj grxrgb.obj grqdev.obj grsfs.obj grpixl.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grpxpo.obj grpxpx.obj grpxre.obj grrec0.obj grfao.obj gritoc.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grqcap.obj grqtxt.obj grskpb.obj grctoi.obj grtrim.obj
+	LIB PGPLOT -+$?;
+
+PGPLOT.LIB:: grexec.obj grdos.obj grsy00.obj msdriv.obj
+	LIB PGPLOT -+$?;
+grexec.obj : $(SYSDIR)\grexec.for
+	COPY $(SYSDIR)\grexec.for .
+	$(FCOMPL) /c $(FFLAGC) grexec.for
+	DEL grexec.for
+grdos.obj : $(SYSDIR)\grdos.for
+	COPY $(SYSDIR)\grdos.for .
+	$(FCOMPL) /c $(FFLAGC) grdos.for
+	DEL grdos.for
+grsy00.obj : $(SYSDIR)\grsy00.for
+	COPY $(SYSDIR)\grsy00.for .
+	$(FCOMPL) /c $(FFLAGC) grsy00.for
+	DEL grsy00.for
+msdriv.obj : $(SYSDIR)\msdriv.for
+	COPY $(SYSDIR)\msdriv.for .
+	$(FCOMPL) /c $(FFLAGC) msdriv.for
+	DEL msdriv.for
+nudriver.obj : $(DRVDIR)\nudriver.f
+	COPY $(DRVDIR)\nudriver.f .\nudriver.for
+	$(FCOMPL) /c $(FFLAGC) nudriver.for
+	DEL nudriver.for
+psdriver.obj : $(DRVDIR)\psdriver.f
+	COPY $(DRVDIR)\psdriver.f .\psdriver.for
+	$(FCOMPL) /c $(FFLAGC) psdriver.for
+	DEL psdriver.for
+
+#-----------------------------------------------------------------------
+# Device drivers
+#-----------------------------------------------------------------------
+CGDRIVER=cgdriv.obj cfopenvws.obj
+GFDRIVER=gfdriv.obj grre01.obj grte02.obj grre04.obj grgf04.obj lib_get_vm.obj
+GTDRIVER=gtdriv.obj grre01.obj grte02.obj grte04.obj grgf04.obj grtk01.obj
+IMDRIVER=imdriv.obj grim00.obj grim02.obj grim03.obj lib_get_vm.obj
+IVDRIVER=ivdriv.obj griv00.obj grivas.obj
+LJDRIVER=ljdriv.obj grlj00.obj
+LLDRIVER=lldriv.obj grlj00.obj
+NUDRIVER=nudriver.obj
+PSDRIVER=psdriver.obj
+VPDRIVER=vpdriv.obj
+PXDRIVER=pxdriv.obj grpx01.obj grpx02.obj lib_get_vm.obj gribf1.obj
+QMDRIVER=qmdriv.obj grqm00.obj
+QPDRIVER=qpdriv.obj grqm00.obj
+REDRIVER=redriv.obj grre01.obj grre02.obj grre04.obj
+SVDRIVER=svdriv.obj svblock.obj
+TEDRIVER=tedriv.obj grte01.obj grte02.obj grte04.obj lib_get_vm.obj
+TFDRIVER=tfdriv.obj grtf01.obj grtf02.obj grtf03.obj lib_get_vm.obj
+TKDRIVER=tkdriv.obj grtk00.obj grtk01.obj
+TVDRIVER=tvdriv.obj grtv00.obj
+VEDRIVER=vedriv.obj grve01.obj grve02.obj lib_get_vm.obj gribf1.obj
+VTDRIVER=vtdriv.obj grvt02.obj grvt03.obj
+VVDRIVER=vvdriv.obj grve01.obj grve02.obj lib_get_vm.obj gribf1.obj
+ZSDRIVER=zsdriv.obj grzs01.obj grzs02.obj grzs03.obj grzs04.obj grzs05.obj
+XWDRIVER=xwdriv.obj xwblock.obj
+X2DRIVER=x2driv.obj
+
+# Compile drivers that compile under Microsoft Fortran.
+# Not all these drivers have actually been tested.
+PGPLOT.LIB:: $(NUDRIVER)
+	LIB PGPLOT -+$(NUDRIVER);
+PGPLOT.LIB:: $(PSDRIVER)
+	LIB PGPLOT -+$(PSDRIVER);
+# PGPLOT.LIB:: $(REDRIVER)
+#	LIB PGPLOT -+$(REDRIVER);
+# PGPLOT.LIB:: $(VPDRIVER)
+#	LIB PGPLOT -+$(VPDRIVER);
+# PGPLOT.LIB:: $(ZSDRIVER)
+#	LIB PGPLOT -+$(ZSDRIVER);
+
+#
+# Note that if you want to build a sharable library including these routines,
+# specifically grdat2.o, you will have to add grdat2.o to the DATAOBJS list.
+#
+OBSOLETE_ROUTINES=\
+    grchar.obj grchr0.obj grdat2.obj grgtc0.obj grmark.obj grinqli.obj\
+    grinqpen.obj\
+    grsetli.obj grsetpen.obj grlinr.obj grmovr.obj grtran.obj grvect.obj\
+    pgsetc.obj pgsize.obj grinqfon.obj grsetfon.obj
+
+#-----------------------------------------------------------------------
+# Target "lib" is used to built the PGPLOT subroutiune library.
+# libpgplot.a is the primary PGPLOT library.
+#-----------------------------------------------------------------------
+lib : PGPLOT.LIB
+
+#-----------------------------------------------------------------------
+# libpgobs.a contains obsolete routines used by some programs
+#-----------------------------------------------------------------------
+PGOBS.LIB : $(OBSOLETE_ROUTINES)
+	LIB PGOBS -+$?;
+
+#-----------------------------------------------------------------------
+# Target "prog" is used to make the demo programs. They can also be made
+# individually.
+#-----------------------------------------------------------------------
+# List of demo programs
+DEMOS = pgdemo1.exe pgdemo2.exe pgdemo4.exe
+
+prog: $(DEMOS)
+
+pgdemo1.exe: $(DEMODIR)\pgdemo1.f
+	COPY $(DEMODIR)\pgdemo1.f pgdemo1.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo1.FOR
+	LINK /SEGMENTS:256 pgdemo1.obj,,NUL,$(LIBS);
+	DEL pgdemo1.for
+pgdemo2.exe: $(DEMODIR)\pgdemo2.f
+	COPY $(DEMODIR)\pgdemo2.f pgdemo2.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo2.FOR
+	LINK /SEGMENTS:256 pgdemo2.obj,,NUL,$(LIBS);
+	DEL pgdemo2.for
+pgdemo4.exe: $(DEMODIR)\pgdemo4.f
+	COPY $(DEMODIR)\pgdemo4.f pgdemo4.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo4.FOR
+	LINK /SEGMENTS:256 pgdemo4.obj,,NUL,$(LIBS);
+	DEL pgdemo4.for
+
+#-----------------------------------------------------------------------
+# Target "grfont.dat" is the binary font file.
+# This is created from grfont.txt with the "pgpack" program.
+#    (a) compile the `pgpack' program; then
+#    (b) run `pgpack' to convert the ASCII version of the font file
+#    (grfont.txt) into the binary version (grfont.dat). When executed,
+#    `pgpack' should report:
+#	Characters defined:   996
+#	Array cells used:   26732
+#-----------------------------------------------------------------------
+pgpack.exe: $(FONTDIR)\pgpack.f
+	COPY $(FONTDIR)\pgpack.F pgpack.FOR
+	$(FCOMPL) $(FFLAGC) pgpack.FOR
+	DEL pgpack.FOR
+
+grfont.dat: $(FONTDIR)\grfont.txt pgpack.exe
+	DEL grfont.dat
+	pgpack <$(FONTDIR)\grfont.txt
+
+#-----------------------------------------------------------------------
+# Target "install" is required for Figaro.
+#-----------------------------------------------------------------------
+install:
+
+#-----------------------------------------------------------------------
+# Target "clean" is used to remove all the intermediate files.
+#-----------------------------------------------------------------------
+clean :
+	DEL *.OBJ
+	DEL *.FOR
+	DEL PGPLOT.BAK
+	DEL PGPACK.EXE
+	DEL PGPLOT.INC
+	DEL GRPCKG1.INC
+
+SPOTLESS: CLEAN
+	DEL *.EXE
+	DEL GRFONT.DAT
+	DEL PGPLOT.LIB
+
+# Include file dependencies:
+# The following PG routines reference `pgplot.inc'
+
+grgray.o grgrgr.o grgrps.o \
+pgask.o  pgbbuf.o pgbeg.o  pgbin.o  pgbox.o  pgcont.o pgcp.o \
+pgcurs.o pgebuf.o pgend.o  pgerrb.o pgerrx.o pgerry.o pggray.o pghi2d.o \
+pghist.o pgiden.o pglcur.o pglen.o  pgmtxt.o pgncur.o pgolin.o \
+pgpage.o pgpap.o  pgpixl.o pgpoly.o pgpt.o   pgptxt.o pgqch.o pgqfs.o \
+pgqinf.o pgqvp.o  pgqwin.o pgrect.o pgsch.o  pgsfs.o  pgsvp.o \
+pgswin.o pgupdt.o pgvsiz.o pgvstd.o pgvw.o   pgwnad.o: $(SRC)/pgplot.inc
+
+# The following GR routines reference `grpckg.inc'
+
+grarea.o grbpic.o grchr0.o grchsz.o grclos.o grclpl.o grcurs.o \
+grdot0.o grdtyp.o gresc.o  gretxt.o grfa.o   grgray.o grgrgr.o \
+grldev.o grlen.o  grlin0.o grlin1.o grlin2.o grlin3.o \
+grlina.o grlinr.o grmker.o grmova.o grmovr.o gropen.o grpage.o \
+grpixl.o grpxpo.o grpxpx.o \
+grqci.o  grqcol.o grqdev.o grqdt.o  grqfnt.o grqls.o  \
+grqlw.o  grqpos.o grqtyp.o grrec0.o grrect.o \
+grsci.o  grscr.o  grsetc.o grsetli.o grsets.o grsfnt.o grsfs.o grsize.o \
+grslct.o grsls.o  grslw.o  grterm.o grtext.o grtrn0.o grtxy0.o \
+grvct0.o: $(SRC)/grpckg1.inc
+
+griv00.o : $(SRCDIR)/gadef.h $(SRCDIR)/gmdef.h $(SRCDIR)/gphdef.h
+grtv00.o : $(SRCDIR)/imdef.h
+
+$(SRC)\pgplot.inc: $(SRCDIR)\pgplot.inc
+	COPY $(SRCDIR)\pgplot.inc .
+
+$(SRC)\grpckg1.inc: $(SRCDIR)\grpckg1.inc
+	COPY $(SRCDIR)\grpckg1.inc .

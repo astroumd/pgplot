@@ -1,0 +1,74 @@
+These are a few helpful hints for compiling PGPLOT on Silicon Graphics
+machines running the Irix operating system.
+
+IRIX 6.2
+--------
+
+In IRIX 6.2, the library names have changed. Edit the .conf file in this
+directory and change
+   LIBS="-lX11_s"
+to
+   LIBS="-lX11"
+
+There are various compilation modes for Irix, e.g., -32, -n32,
+-64. The configuration files provided use the default; if you change
+this, make sure you compile everything in the same mode.
+
+
+PGPLOT driver for SGI GL library: not recommended
+-------------------------------------------------
+
+In the drivers/old directory there is a native SGI GL library driver
+called irdriv.c.  Note this driver does not report the position of the
+cursor correctly unless the window is in the very bottom left of the
+screen, and may have other problems..  Since the new /XW and /XS
+devices work fine on the SGI console, you are encouraged to use these
+instead of /IR.
+
+If you want to use this driver, move it to the pgplot/drivers
+directory, and add the line:
+
+ IRDRIV 0 /IRIS      SiliconGraphics Console		SGI only (C)
+
+to your local drivers.list file. You will also need to include the gl
+library when linking programs: add "-lgl" or "-lgl_s" to the
+definition of LIBS in the .conf file in this directory. Then rerun
+makemake and make.
+
+Some people have gotten a "-lgl_s file not found" message.  This error
+occurs if you only have the runtime version of the gl library
+installed.  The solution is to create a version of pgplot without the
+IRIS driver.
+ 
+
+PGPLOT driver for PGDISP/FIGDISP: not supported
+-----------------------------------------------
+
+The device driver x2driv.c and its supporting server program pgdisp
+cannot be compiled on SGI.  Use xwdriv.c (/XWIN or /XSERV) instead.  I
+no longer support x2driv/pgdisp and I only distribute the code for the
+benefit of people using the Figaro astronomical image processing
+system.
+
+
+Other Problems
+--------------
+
+Some users report warning messages when linking the the demo programs.
+Messages that routines are multiply defined are probably harmless; if
+you think they are due to a problem in PGPLOT or the installation
+procedure, please let me know.
+
+Older versions of the compiler would sometimes crash compiling some
+PGPLOT routines.  If this happens, just decrease the level of
+optimization and try again; e.g., change the flags in the
+configuration file (*.conf) to -O1 on FFLAGC and -O0 on FFLAGD.
+
+PGPLOT should compile and run without the -static flag.  This flag
+is equivalent to including a SAVE statement in the code.  If you find
+a routine that needs the -static then this is a bug in the PGPLOT code
+that should be fixed.  Please report the problem.
+
+________________________________________________________________________
+
+TJP 10-Mar-1997

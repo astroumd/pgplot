@@ -1,0 +1,66 @@
+pgplot/sys_linux
+
+The files in this directory are for use with the Linux operating
+system. Note that Linux systems come in two varieties: one that uses
+the a.out for binaries, and another uses the elf format.
+
+(1) File f77_gcc.conf is for use with the 'f77' command that uses
+the f2c Fortran translator and the gcc C compiler, on 'a.out' systems.
+
+Note that the f2c compiler used by Linux interprets the character "\"
+in Fortran literal character strings as a Unix escape character. To
+compile the demo programs (or other programs that use "\" as a PGPLOT
+escape character) correctly, you need to turn this off. There appears
+to be no way to do this on the f77 command line, but options for the
+f2c program can be specified in an environment variable: e.g., type
+ 
+[csh]	setenv F2CFLAGS "-\!bs"
+
+[sh]	set F2CFLAGS "-\!bs" ; export F2CFLAGS
+
+before starting the makefile (the backslash is to quote the
+exclamation mark; it is not part of the F2CFLAGS value).
+
+
+Note that several of the PGPLOT device drivers use Fortran extensions
+(most notably the %VAL() syntax for passing an argument by value) that
+are not supported by f2c.  These drivers cannot be used with
+Linux. The drivers include: epdriv.f, gidriv.f, ppdriv.f. Driver ljdriv.f
+also cannot be compiled with this system.
+
+Some Linux users report that make dies with "error 4". This is
+apparently due to an error in the f77 script. Workarounds include
+using "make -k" to continue after the error; upgrading the bash shell;
+using a tcsh shell; using g77 instead of f77.
+
+On some versions of Linux and/or f2c, creation of the "pgxwin_server" and
+"pgdisp" programs fails with the message:
+  /usr/lib/libf2c.so.0.11: undefined reference to `MAIN__'
+You should be able to create the program by re-executing the gcc comand that
+failed, omitting the "-lf2c" option. [I am looking into ways of modifying
+the installation procedure to avoid this problem.]
+
+The f2c Fortran support library does a setbuf(stderr) to make stderr
+buffered.  This may affect programs that call PGPLOT from C. To make
+stderr output appear when you want, use fflush(stderr) where
+appropriate.
+
+(2) File g77_gcc.conf uses the beta gnu g77 compiler, on 'a.out' systems.
+
+(3) File g77_elf.conf uses the beta gnu g77 compiler, on 'elf' systems.
+
+Older versions of g77 do not support INTEGER*2 or BYTE variables and
+thus many drivers will not compile in g77. Version 0.5.18 is reported
+to handle BYTE and %VAL() and compile PGPLOT correctly.
+
+Although g77 compiles more drivers than f2c, there are several that it
+fails to compile (e.g., mfdriv.f, pxdriv.f). If you have a real need
+for any of these drivers, let me know and I will see if I can fix the
+problem.
+
+
+Tim Pearson
+6-Mar-1997
+(with thanks to Massimo Manghi, Peter Teuben, Brian Toby, JaiYong Lee, 
+Klaus-Georg Adams, and others)
+____________________________________________________________________________

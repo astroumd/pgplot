@@ -1,0 +1,68 @@
+pgplot/sys_sol2
+
+The *.conf files in this directory are for use with Solaris 2.x (SunOS
+5.x).  Use the *.conf files in pgplot/sys_sun4 for SunOS v4.1.x
+(Solaris version 1.x).
+
+f77_cc.conf: for the Solaris f77 FORTRAN compiler and Solaris
+(SunWpro) cc ANSI C compiler.
+
+  NOTE: this will not work if "cc" on your system invokes the
+ old BSD (non-ANSI) C compiler.
+
+f77_gcc.conf: for the Solaris f77 FORTRAN compiler and Gnu gcc C
+compiler.
+
+g77_gcc.conf: for the GNU g77 FORTRAN compiler and Gnu gcc C compiler.
+
+  NOTE: g77 will not compile some of the very non-standard drivers,
+  including HGDRIV and LJDRIV. The drivers should be rewritten.
+
+f90_cc.conf: for the Solaris f90 1.1 FORTRAN compiler and Solaris cc
+ANSI C compiler.
+
+  (Provided by Ricardo Piriz.) This does not create a shared library:
+  "The f90 manual is not very clear about it, but it says "...this
+  release does not provide a way to guarantee that code is position
+  independent (no -PIC option)". The compiler warns about INTEGER*2
+  variables, but compiles them (correctly) as INTEGER*4.  Many of the
+  device drivers cannot be compiled with this compiler; so far, only the
+  NULL and POSTSCRIPT drivers have been tested.
+
+-----------------------------------------------------------------------
+
+POTENTIAL PROBLEMS
+
+(1) You must use the Solaris version of "ld", not the ucb version.
+
+Symptom: when running a pgplot program, you get the following message:
+ % pgdemo1
+ ld.so.1: pgdemo1: fatal: libucb.so.1: can't open file: errno=2
+ killed 
+
+Check which version of "ld" you are using by executing the following
+command:
+
+% which ld
+
+You should get a result like:
+
+/usr/ccs/bin/ld
+
+However, if the command shows a filename with "ucb" in it, you are
+picking up the wrong version. Solaris 2.5 does not require anything in
+the "ucb" directories, but they are provided for backwards
+compatibility with SunOS. You will need to change your path (PATH
+environment variable) (before installing PGPLOT) to make sure that the
+Solaris directories are scanned before any ucb directories. My PATH
+does not include the ucb directories at all:
+
+bottom% echo $PATH
+/usr/openwin/bin:/opt/SUNWspro/bin:/usr/bin:/usr/local/bin:/usr/sbin:/usr/ccs/bin:/home/bottom/tjp/bin:.
+
+I do not know why Sun distributes two versions of "ld" with Solaris,
+or why they are imcompatible.
+
+Tim Pearson
+5 Oct  1996
+------------------------------------------------------------------------

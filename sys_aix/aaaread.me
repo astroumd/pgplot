@@ -1,0 +1,21 @@
+pgplot/sys_aix
+
+The *.conf files in this directory are for use with IBM RS/6000
+machines running AIX. PGPLOT has been tested with AIX 3.2.5 and
+xlf 3.2.
+
+Problems:
+
+(1) xlf complains about DATA initialization of variables in COMMON
+in routines gropen and pgbeg, but it appears to do the correct thing.
+You can ignore these messages.
+
+(2) Some PGPLOT device drivers, e.g., lxdriv, use non-standard ENCODE
+statements that xlf rejects. These can be replaced with in-memory
+WRITE statements if necessary. I have not done this because I have no
+way to test that the modified drivers still work. Let me know if you
+do change these drivers successfully.
+
+
+Tim Pearson
+3 November 1995
