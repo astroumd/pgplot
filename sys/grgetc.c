@@ -85,11 +85,10 @@ int *val;
 		-20,-21,-22,-23,-24,-25,-26,-27,-28,-29,
 		-17,-16,-18, -8 };
     static struct termios term, saveterm;
-    int tmp=0, i;
+    int i;
     int nextch;
     static int init=1;
     static int raw=0;
-    static int save_flags;
 
     if (init) {
 	putchar(ESC);

@@ -17,6 +17,7 @@ C               Kermit version 3 (for DOS).
 C 1994 Dec 19 - TJP: better XTERM support.
 C 1994 Dec 29 - TJP: and Tek4100 support (MODE 9).
 C 1996 Apr 18 - TJP: prevent concurrent access.
+C 1998 Mar 09 - M. Zolliker: new MODE 10 for VersaTerm-PRO for Macintosh
 C
 C Supported device:
 C 1. Tektronix 4006/4010 storage-tube terminal; can be used with
@@ -58,8 +59,8 @@ C   vertical lines, so the bottom few lines may disappear. Tektronix
 C   enhancements include selective erase, colours, rectangle fill, and
 C   switching between text and graphics mode. The cursor may be
 C   operated with the mouse. Tested with Kermit version 3.1.
-C 9.Tektronix 4100 series color terminals (and emulators, e.g.,
-C   Versaterm-PRO for Macintosh).
+C 9.Tektronix 4100 series color terminals (and emulators)
+C 10.Versaterm-PRO for Macintosh (Tek 4105 emulation).
 C
 C Device type codes:
 C 1.  /TEK4010 Tektronix-4010 terminal
@@ -71,6 +72,7 @@ C 6.  /ZSTEM   ZSTEM terminal emulator
 C 7.  /V603    Visual V603 terminal
 C 8.  /KRM3    Kermit 3 on IBM-PC
 C 9.  /TK4100  Tektronix 4100 series terminals
+C 10. /VMAC    VersaTerm-PRO for Macintosh
 C
 C Default device name: the logged-in terminal
 C   /dev/tty (UNIX)
@@ -100,6 +102,10 @@ C   /KRM3: color indices 0 to 7 are the standard PGPLOT colors. Indices
 C       8 to 14 are also available, but are BRIGHT versions of 1 to 7,
 C       and thus non-standard. Color representation can't be changed.
 C   /TK4100: color indices 0-15.
+C   /VMAC: color indices 0 to 15 are available and default to the
+C       standard PGPLOT colors. The color representation can be changed.
+C       Caution: this does not work reliably, owing to bugs (?) in
+C       Versaterm.
 C
 C Input capability:
 C   Depending on the emulation, the graphics cursor may be a pointer,
@@ -152,6 +158,7 @@ C   graphon: draw the diagonal in special rectangle mode,
 C     entered with [ESC][STX], exit with [ESC][ETX]
 C   v603: bottom corner and rectangle width
 C   krm3: bottom corner and rectangle width
+C   vmac: use panel boundary commands [ESC]LP and [ESC]LE
 C Color index zero (erase):
 C   graphon select erase:        [ESC][DLE]
 C   graphon unselect erase:      [ESC][SOH]
@@ -161,7 +168,7 @@ C   krm3, select erase:          [ESC][0;30m
 C   krm3, unselect erase:        [ESC][0;37m
 C-----------------------------------------------------------------------
       INTEGER NDEVS
-      PARAMETER (NDEVS=9)
+      PARAMETER (NDEVS=10)
       INTEGER CAN, ESC, GS, US
       PARAMETER (CAN=24, ESC=27, GS=29, US=31)
 C
@@ -182,6 +189,9 @@ C
       SAVE    APPEND
       REAL    XRESLN(NDEVS), YRESLN(NDEVS)
       SAVE    XRESLN,        YRESLN
+      REAL    HUE,SAT,LIG
+      LOGICAL SEFCOL
+      SAVE    SEFCOL
 C
       INTEGER IRGB(3,0:15), TKRGB(3,0:15)
 C
@@ -194,13 +204,14 @@ C
       DATA DEVICE(7) /'V603  (Visual 603 terminal)'/
       DATA DEVICE(8) /'KRM3  (Kermit 3 IBM-PC terminal emulator)'/
       DATA DEVICE(9) /'TK4100 (Tektronix 4100 terminals)'/
-C                 TEK  GF   RET  GTER XTER ZSTE V603 KRM3 TK41
-      DATA XSIZE /1023,1023,1023,1023,1023,1023,1023,1023,1023/
-      DATA YSIZE / 779, 779, 779, 779, 779, 779, 779, 779, 779/
-      DATA MAXCI /   1,   1,   1,  15,   1,   7,   1,  14,  15/
-      DATA XRESLN/130.,128.,128.,130.,128.,130.,115.,110.,100./
-      DATA YRESLN/130.,130.,130.,130.,130.,130.,115.,110.,100./
-      DATA I4014/    0,   0,   0,   0,   1,   1,   0,   0,   1/
+      DATA DEVICE(10) /'VMAC  (VersaTerm-PRO for Mac, Tek 4105)'/
+C                 TEK  GF   RET  GTER XTER ZSTE V603 KRM3 TK41 VMAC
+      DATA XSIZE /1023,1023,1023,1023,1023,1023,1023,1023,1023,1023/
+      DATA YSIZE / 779, 779, 779, 779, 779, 779, 779, 779, 779, 779/
+      DATA MAXCI /   1,   1,   1,  15,   1,   7,   1,  14,  15,  15/
+      DATA XRESLN/130.,128.,128.,130.,128.,130.,115.,110.,100.,128./
+      DATA YRESLN/130.,130.,130.,130.,130.,130.,115.,110.,100.,128./
+      DATA I4014/    0,   0,   0,   0,   1,   1,   0,   0,   1,   1/
       DATA IRGB /  0,  0,  0, 255,255,255, 255,  0,  0,   0,255,  0,
      1             0,  0,255,   0,255,255, 255,  0,255, 255,255,  0,
      2           255,128,  0, 128,255,  0,   0,255,128,   0,128,255,
@@ -255,6 +266,11 @@ C
    40 CONTINUE
       CHR = 'ICNNNNNNNN'
       IF (MODE.EQ.2 .OR. MODE.EQ.7 .OR. MODE.EQ.8) CHR(6:6) = 'R'
+      IF (MODE.EQ.10) THEN
+C       -- VMAC: rect. fill and wait before closing graph window
+        CHR(6:6) = 'R'
+        CHR(8:8) = 'V'
+      ENDIF
       LCHR = 10
       RETURN
 C
@@ -342,6 +358,19 @@ C              -- blue
                CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
  91         CONTINUE
             CALL GRTT02(ICHAN, MODE, CHAR(CAN), 1, CBUF, LBUF)
+         ELSE IF (MODE.EQ.10) THEN
+C           -- VMAC: put into Tek 4105 mode
+            CTMP(1:5)=CHAR(ESC)//'%!1'//CHAR(GS)
+            CALL GRTT02(ICHAN, MODE, CTMP, 5, CBUF, LBUF)
+            SEFCOL = .TRUE.
+C           -- set default color representation
+            DO 92,I=0,15
+              CALL GRXHLS(IRGB(1,I)/255.,IRGB(2,I)/255.,IRGB(3,I)/255.
+     :              ,HUE,LIG,SAT)
+              CALL GRTT06(I, NINT(HUE), NINT(LIG*100), NINT(SAT*100)
+     :              , CTMP, LTMP)
+              CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
+92          CONTINUE
          END IF
       END IF
       RETURN
@@ -360,6 +389,11 @@ C            moment.
           CTMP(1:7) = CHAR(CAN)//CHAR(ESC)//CHAR(91)//CHAR(63)//
      :                CHAR(51)//CHAR(56)//CHAR(108)
           LTMP=7
+          CALL GRWTER(ICHAN, CTMP, LTMP)
+      ELSE IF (MODE.EQ.10) THEN
+C         -- VMAC: put into VT100 Mode without window resize
+          CTMP(1:5)=CHAR(GS)//CHAR(ESC)//'%!7'
+          LTMP=5
           CALL GRWTER(ICHAN, CTMP, LTMP)
       END IF
       CALL GRCTER(ICHAN)
@@ -489,8 +523,8 @@ C         -- krm3: enter alphanumerics and unset graphics
      :               CHAR(51)//CHAR(56)//CHAR(108)
          LTMP=6
          CALL GRWTER(ICHAN, CTMP, LTMP)
-      ELSE IF (MODE.EQ.9) THEN
-C        -- TK4100: return to text mode
+      ELSE IF (MODE.EQ.9 .OR. MODE.EQ.10) THEN
+C        -- TK4100, VMAC: return to text mode
          CTMP(1:1) = CHAR(ESC)
          CTMP(2:4) = '%!1'
          LTMP=4
@@ -522,12 +556,13 @@ C         -- Retrographics, V603
           CTMP(4:4) = CHAR(49-ICI)
           CTMP(5:5) = CHAR(100)
           CALL GRTT02(ICHAN, MODE, CTMP, 5, CBUF, LBUF)
-      ELSE IF ( MODE.EQ.4 .OR. MODE.EQ.6) THEN
-C         -- gterm and zstem
+      ELSE IF ( MODE.EQ.4 .OR. MODE.EQ.6 .OR. MODE.EQ.10) THEN
+C         -- gterm and zstem, VMAC
           CTMP(1:4) = CHAR(GS)//CHAR(ESC)//'ML'
           CALL GRTT02(ICHAN, MODE, CTMP, 4, CBUF, LBUF)
           CALL GRTT05(ICI, CTMP, LTMP)
           CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
+          SEFCOL=.TRUE.
       ELSE IF (MODE.EQ.9) THEN
 C         -- TK4100
           CTMP(1:3) = CHAR(ESC)//'ML'
@@ -704,6 +739,16 @@ C        -- blue
          CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
          CALL GRWTER(ICHAN, CBUF, LBUF)
          LASTI = -1
+      ELSE IF (MODE.EQ.10) THEN
+C        -- VersaTerm
+         CTMP(1:1)=CHAR(GS)
+         CALL GRTT02(ICHAN, MODE, CTMP, 1, CBUF, LBUF)
+         CALL GRXHLS(RBUF(2), RBUF(3), RBUF(4), HUE, LIG, SAT)
+         CALL GRTT06(NINT(RBUF(1))
+     :     , NINT(HUE), NINT(LIG*100), NINT(SAT*100), CTMP, LTMP)
+         CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
+         CALL GRWTER(ICHAN, CBUF, LBUF)
+         LASTI = -1
       END IF
       RETURN
 C
@@ -763,6 +808,38 @@ C            dimensions
      :         CHAR(59)//CSCR(4)(IBUF(4):4)//CHAR(59)//CHAR(49)//
      :         CHAR(121)
           CALL GRTT02(ICHAN, MODE, CTMP, 8+ITOT, CBUF, LBUF)
+      ELSE IF (MODE.EQ.10) THEN
+C         -- VMAC: use polygon fill commands
+          IF (SEFCOL) THEN
+C set fill color
+            SEFCOL=.FALSE.
+            CTMP(1:3) = CHAR(ESC)//'MP'
+            CALL GRTT02(ICHAN, MODE, CTMP, 3, CBUF, LBUF)
+            CALL GRTT05(-ICI, CTMP, LTMP)
+            CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
+          ENDIF
+C send "start polygon fill"
+          CTMP(1:3) = CHAR(ESC)//'LP'
+          LTMP=3
+C make lasti,lastj different from i0,j0 in each bit
+          LASTI=4095-I0
+          LASTJ=4095-J0
+C send first coordinate
+          CALL GRTT04(I4014(MODE), LASTI, LASTJ, I0, J0, CTMP, LTMP)
+          LASTI=I0
+          LASTJ=J0
+C '0' means: boundary has the same the color as fill area
+          CTMP(LTMP+1:LTMP+1)='0'
+          LTMP=LTMP+1
+          CALL GRTT02(ICHAN, MODE, CTMP, LTMP, CBUF, LBUF)
+C further edges:
+          CALL GRTT01(ICHAN, MODE, I4014(MODE), LASTI, LASTJ,
+     :      I0, J1, I1, J1, CBUF, LBUF)
+          CALL GRTT01(ICHAN, MODE, I4014(MODE), LASTI, LASTJ,
+     :      I1, J1, I1, J0, CBUF, LBUF)
+C send "end polygon fill"
+          CTMP(1:3)=CHAR(ESC)//'LE'
+          CALL GRTT02(ICHAN, MODE, CTMP, 3, CBUF, LBUF)
       END IF
       RETURN
 C-----------------------------------------------------------------------
@@ -1088,4 +1165,30 @@ C
           NC = 2
       END IF
 C
+      END
+C*GRTT06 -- PGPLOT Tektronix 4100 driver, encode color definition
+C+
+      SUBROUTINE GRTT06(IDX, I1, I2, I3, C, NC)
+      INTEGER ESC, GS, US
+      PARAMETER (ESC=27, GS=29, US=31)
+      INTEGER IDX, I1, I2, I3
+      CHARACTER*(*) C
+      INTEGER NC
+C
+C Encode color definition, Color index IDX, I1,I2,I3 are the 3 integer
+C color components (definiton is device-dependent).
+C output encoded string containing NC characters (max 20).
+C-----------------------------------------------------------------------
+      INTEGER L
+C
+      C(1:5) = CHAR(ESC)//'TG14'
+      NC=5
+      CALL GRTT05(IDX, C(NC+1:NC+3), L)
+      NC=NC+L
+      CALL GRTT05(I1, C(NC+1:NC+3), L)
+      NC=NC+L
+      CALL GRTT05(I2, C(NC+1:NC+3), L)
+      NC=NC+L
+      CALL GRTT05(I3, C(NC+1:NC+3), L)
+      NC=NC+L
       END

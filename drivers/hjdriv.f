@@ -1,4 +1,4 @@
-C*HJDRIV -- PGPLOT Hewlett Packard [Desk/Laser] Jet driver
+*HJDRIV -- PGPLOT Hewlett Packard [Desk/Laser] Jet driver
 C+
       SUBROUTINE HJDRIV (IFUNC, RBUF, NBUF, CHR, LCHR)
       INTEGER IFUNC, NBUF, LCHR
@@ -194,7 +194,7 @@ C actual settings
       REAL*4     dev_VC, dev_HC
       REAL*4     dev_resol,dev_maxX,dev_maxY
       LOGICAL    dev_bitmap_L, dev_port_L, dev_cmprs_L
-      CHARACTER  dev_name*18
+      CHARACTER  dev_name*80
  
 C                                       These are the NDEV sets of
 C                                       device characteristics.
@@ -360,7 +360,7 @@ C  y.y  is the size of the page in the y direction
           ELSE
             WRITE (mode(9:),'(f3.1)') dev_maxY
           ENDIF
-         DEV_NAME = 'HJ -' // mode
+         DEV_NAME = 'HJ (Hewlett-Packard Deskjet/Laserjet) ' // mode
         ENDIF
 C-----------------------------------------------------------------------
 C                                       Branch on opcode.
@@ -1041,7 +1041,7 @@ C                                       Write out raster line
       END DO
 C-----------------------------------------------------------------------
  1000 FORMAT (I4.4)
- 1010 FORMAT (SPI5)
+ 1010 FORMAT (SP,I5)
       RETURN
       END
  

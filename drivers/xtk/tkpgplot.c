@@ -78,6 +78,9 @@ typedef struct dsc$descriptor_s VMS_string;
 
 #define TKPG_DEF_HIGHLIGHT_WIDTH 2  /* Default width of traversal highlight */
 #define TKPG_STR_DEF_HIGHLIGHT_WIDTH "2"/* String ver of TKPG_DEF_HIGHLIGHT_WIDTH */
+#define TKPG_STR_MARGIN_DEF "20"    /* The default number of pixels of */
+                                    /*  extra space to allocate around the */
+                                    /*  edge of the plot area. */
 
 /*
  * Specify the name to prefix errors with.
@@ -141,6 +144,8 @@ struct TkPgplot {
   int relief;               /* Relief of the 3D border */
   char *takeFocus;          /* "1" to allow focus traversal, "0" to disallow */
   Cursor cursor;            /* The active cursor of the window */
+  int share;                /* True if shared colors are desired */
+  int padx,pady;            /* Extra padding margin widths (pixels) */
                       /* Private attributes */
   TkPgplot *next;           /* The next widget of a list of PGPLOT Xt widgets */
   int tkslct_id;            /* The device ID returned to PGPLOT by the */
@@ -246,6 +251,18 @@ static Tk_ConfigSpec configSpecs[] = {
      "-maxcolors", "maxColors", "MaxColors",
      TKPG_STR_DEF_COLORS, Tk_Offset(TkPgplot, max_colors), 0},
 
+  {TK_CONFIG_BOOLEAN,
+     "-share", "share", "Share",
+     0, Tk_Offset(TkPgplot, share), 0},
+
+  {TK_CONFIG_PIXELS,
+     "-padx", "padX", "Pad",
+     TKPG_STR_MARGIN_DEF, Tk_Offset(TkPgplot, padx), 0},
+
+  {TK_CONFIG_PIXELS,
+     "-pady", "padY", "Pad",
+     TKPG_STR_MARGIN_DEF, Tk_Offset(TkPgplot, pady), 0},
+
   {TK_CONFIG_END, (char *) NULL, (char *) NULL, (char *) NULL,
      (char *) NULL, 0, 0}
 };
@@ -290,6 +307,9 @@ static void tkpg_ClrCursor(TkPgplot *tkpg);
 static void tkpg_EventHandler(ClientData context, XEvent *event);
 static void tkpg_CursorHandler(ClientData context, XEvent *event);
 
+static Tk_Window tkpg_toplevel_of_path(Tcl_Interp *interp, Tk_Window main_w,
+				       char *path);
+
 /*
  * Enumerate supported pgband() cursor types.
  */
@@ -327,6 +347,8 @@ static int tkpg_tcl_pixel(TkPgplot *tkpg, Tcl_Interp *interp,
 			  char *widget, int argc, char *argv[]);
 static int tkpg_tcl_id(TkPgplot *tkpg, Tcl_Interp *interp, 
 		       char *widget, int argc, char *argv[]);
+static int tkpg_tcl_device(TkPgplot *tkpg, Tcl_Interp *interp, 
+			   char *widget, int argc, char *argv[]);
 
 #ifdef RIVET
 static void del_RvPgplot(ClientData obj);
@@ -465,6 +487,13 @@ static TkPgplot *new_TkPgplot(Tcl_Interp *interp, Tk_Window main_w, char *name,
 {
   TkPgplot *tkpg;  /* The new widget object */
   PgxWin *pgx;     /* The PGPLOT X window object of the widget */
+  Tk_Window top_w; /* The top-level window parent of 'name' */
+/*
+ * Get the toplevel window associated with the pathname in 'name'.
+ */
+  top_w = tkpg_toplevel_of_path(interp, main_w, name);
+  if(!top_w)
+    return NULL;
 /*
  * Allocate the container.
  */
@@ -494,6 +523,9 @@ static TkPgplot *new_TkPgplot(Tcl_Interp *interp, Tk_Window main_w, char *name,
   tkpg->relief = TK_RELIEF_RAISED;
   tkpg->takeFocus = NULL;
   tkpg->cursor = None;
+  tkpg->share = 0;
+  tkpg->padx = 0;
+  tkpg->pady = 0;
   tkpg->next = NULL;
   tkpg->tkslct_id = tkPgplotClassRec.id_counter++;
   tkpg->pgslct_id = 0;
@@ -509,7 +541,7 @@ static TkPgplot *new_TkPgplot(Tcl_Interp *interp, Tk_Window main_w, char *name,
 /*
  * Allocate the PGPLOT-window context descriptor.
  */
-  pgx = tkpg->pgx = new_PgxWin(tkpg->display, Tk_ScreenNumber(main_w),
+  pgx = tkpg->pgx = new_PgxWin(tkpg->display, Tk_ScreenNumber(top_w),
 			(void *) tkpg, name, 0, tkpg_NewPixmap);
   if(!pgx) {
     Tcl_AppendResult(interp, "Unable to create Pgplot window object for: ",
@@ -528,10 +560,10 @@ static TkPgplot *new_TkPgplot(Tcl_Interp *interp, Tk_Window main_w, char *name,
   };
   sprintf(tkpg->device, "%s/%s", name, TK_PGPLOT_DEVICE);
 /*
- * Ensure that the main window of the application exists before attempting
- * to determine its visual.
+ * Ensure that the toplevel window parent of the new window exists,
+ * before attempting to determine its visual.
  */
-  Tk_MakeWindowExist(main_w);
+  Tk_MakeWindowExist(top_w);
 /*
  * Create the widget window from the specified path.
  */
@@ -553,22 +585,26 @@ static TkPgplot *new_TkPgplot(Tcl_Interp *interp, Tk_Window main_w, char *name,
  */
   Tcl_CreateCommand(interp, name, tkpg_InstanceCommand, (ClientData) tkpg, 0);
 /*
- * Parse command line defaults into tkpg so that tkpg->min_colors and
- * tkpg->max_colors are known.
+ * Parse command line defaults into tkpg so that tkpg->min_colors,
+ * tkpg->max_colors and tkpg->share are known.
  */
   if(Tk_ConfigureWidget(interp, tkpg->tkwin, configSpecs, argc, argv,
 			(char *) tkpg, 0) == TCL_ERROR)
     return del_TkPgplot(tkpg);
 /*
- * Allocate colors from the application colormap.
+ * If requested, try to allocate read/write colors.
+ * If this fails arrange to try shared colors.
  */
-  if(!pgx_window_visual(pgx, Tk_WindowId(main_w), tkpg->min_colors,
-			tkpg->max_colors)) {
-    fprintf(stderr,
-      "%s: There are insufficient colors, so black and white will be used.\n",
-       TKPG_IDENT);
-    if(!pgx_bw_visual(pgx)) {
-      Tcl_AppendResult(interp, "No colors for ", name, NULL);
+  if(!tkpg->share && !pgx_window_visual(pgx, Tk_WindowId(top_w),
+				       tkpg->min_colors, tkpg->max_colors, 0))
+    tkpg->share = 1;
+/*
+ * Allocate shared colors?
+ */
+  if(tkpg->share) {
+    if(!pgx_window_visual(pgx, Tk_WindowId(top_w), tkpg->min_colors,
+			tkpg->max_colors, 1)) {
+      Tcl_AppendResult(interp, "Unable to allocate any colors for ",name,NULL);
       return del_TkPgplot(tkpg);
     };
   };
@@ -609,6 +645,11 @@ static TkPgplot *new_TkPgplot(Tcl_Interp *interp, Tk_Window main_w, char *name,
  */
   tkpg_update_scroll_bars(tkpg);
   tkpg_update_clip(tkpg);
+/*
+ * Replace the share configuration attribute with the actual
+ * value that was acheived.
+ */
+  tkpg->share = pgx->color->readonly;
 /*
  * Prepend the new widget to the list of unassigned widgets to be
  * used by pgbeg().
@@ -1158,15 +1199,9 @@ void DRIV(ifunc, rbuf, nbuf, chr, lchr, len)
 /*--- IFUNC=3, Return device resolution ---------------------------------*/
 
   case 3:
-    {
-      int xpix_per_inch;
-      int ypix_per_inch;
-      pgx_get_resolution(pgx, &xpix_per_inch, &ypix_per_inch);
-      rbuf[0] = xpix_per_inch;
-      rbuf[1] = ypix_per_inch;
-      rbuf[2] = 1.0;		/* Device coordinates per pixel */
-      *nbuf = 3;
-    };
+    pgx_get_resolution(pgx, &rbuf[0], &rbuf[1]);
+    rbuf[2] = 1.0;		/* Device coordinates per pixel */
+    *nbuf = 3;
     break;
 
 /*--- IFUNC=4, Return misc device info ----------------------------------*/
@@ -1334,7 +1369,7 @@ void DRIV(ifunc, rbuf, nbuf, chr, lchr, len)
 /*--- IFUNC=22, Set line width. -----------------------------------------*/
 
   case 22:
-    pgx_set_lw(pgx, (int)(rbuf[0] + 0.5));
+    pgx_set_lw(pgx, rbuf[0]);
     break;
 
 /*--- IFUNC=23, Escape --------------------------------------------------*/
@@ -1483,6 +1518,10 @@ static int tkpg_InstanceCommand(ClientData context, Tcl_Interp *interp,
     return tkpg_InstanceCommand_return(context,
 				       tkpg_tcl_id(tkpg, interp, widget,
 						   argc-2, argv+2));
+  } else if(strcmp(command, "device") == 0) { /* PGPLOT name for the widget */
+    return tkpg_InstanceCommand_return(context,
+				       tkpg_tcl_device(tkpg, interp, widget,
+						       argc-2, argv+2));
   };
 /*
  * Unknown command name.
@@ -1531,6 +1570,10 @@ static int tkpg_Configure(TkPgplot *tkpg, Tcl_Interp *interp,
 			  int argc, char *argv[], int flags)
 {
 /*
+ * Get the X-window pgplot object.
+ */
+  PgxWin *pgx = tkpg->pgx;
+/*
  * Install the new defaults in tkpg.
  */
   if(Tk_ConfigureWidget(interp, tkpg->tkwin, configSpecs, argc, argv,
@@ -1539,22 +1582,22 @@ static int tkpg_Configure(TkPgplot *tkpg, Tcl_Interp *interp,
 /*
  * Install the background color in PGPLOT color-index 0.
  */
-  pgx_set_background(tkpg->pgx, Tk_3DBorderColor(tkpg->border));
+  pgx_set_background(pgx, Tk_3DBorderColor(tkpg->border));
 /*
  * Install the foreground color in PGPLOT color-index 1.
  */
-  pgx_set_foreground(tkpg->pgx, tkpg->normalFg);
+  pgx_set_foreground(pgx, tkpg->normalFg);
 /*
  * Install changes to window attributes.
  */
   {
     XSetWindowAttributes attr;  /* The attribute-value container */
     unsigned long mask = 0;     /* The set of attributes that have changed */
-    attr.background_pixel = tkpg->pgx->color->pixel[0];
+    attr.background_pixel = pgx->color->pixel[0];
     mask |= CWBackPixel;
-    attr.colormap = tkpg->pgx->color->cmap;
+    attr.colormap = pgx->color->cmap;
     mask |= CWColormap;
-    attr.border_pixel = tkpg->pgx->color->pixel[0];
+    attr.border_pixel = pgx->color->pixel[0];
     mask |= CWBorderPixel;
     attr.do_not_propagate_mask = ButtonPressMask | ButtonReleaseMask |
       KeyPressMask | KeyReleaseMask;
@@ -1569,6 +1612,10 @@ static int tkpg_Configure(TkPgplot *tkpg, Tcl_Interp *interp,
  * Tell pgxwin that the clip margin may have changed.
  */
   tkpg_update_clip(tkpg);
+/*
+ * Update the optional window margins.
+ */
+  pgx_set_margin(pgx, tkpg->padx, tkpg->pady);
 /*
  * Refresh the window.
  */
@@ -2037,6 +2084,7 @@ int rvp_world2xwin(Rivetobj widget, float wx, float wy, int *px, int *py)
     return 1;
   return 0;
 }
+
 #endif
 
 /*.......................................................................
@@ -2495,4 +2543,100 @@ static int tkpg_tcl_id(TkPgplot *tkpg, Tcl_Interp *interp,
   sprintf(tkpg->buffer, "%d", tkpg->pgslct_id);
   Tcl_AppendResult(interp, tkpg->buffer, NULL);
   return TCL_OK;
+}
+
+/*.......................................................................
+ * Implement the Tcl "return PGPLOT device specifier" function.
+ *
+ * Input:
+ *  tkpg        TkPgplot *  The widget record.
+ *  interp    Tcl_Interp *  The TCL intrepreter.
+ *  widget          char *  The name of the PGPLOT widget.
+ *  argc             int    The number of configuration arguments.
+ *  argv            char ** The array of 'argc' configuration arguments.
+ *                          (None are expected).
+ * Output:
+ *  return           int    TCL_OK    - Success.
+ *                          TCL_ERROR - Failure.
+ */
+static int tkpg_tcl_device(TkPgplot *tkpg, Tcl_Interp *interp, 
+			   char *widget, int argc, char *argv[])
+{
+/*
+ * There shouldn't be any arguments.
+ */
+  if(argc != 0) {
+    Tcl_AppendResult(interp, "Usage: ", widget, " device", NULL);
+    return TCL_ERROR;
+  };
+/*
+ * Return the device specifier in the Tcl result string.
+ */
+  Tcl_AppendResult(interp, tkpg->device, NULL);
+  return TCL_OK;
+}
+
+/*.......................................................................
+ * Return the toplevel window ID of a given tk pathname.
+ *
+ * Input:
+ *  interp  Tcl_Interp *  The TCL intrepreter.
+ *  main_w   Tk_Window    The main window of the application.
+ *  path          char *  The tk path name of a window.
+ * Output:
+ *  return   Tk_Window    The top-level window of the path, or NULL if
+ *                        it doesn't exist. In the latter case an error
+ *                        message will have been appended to interp->result.
+ */
+static Tk_Window tkpg_toplevel_of_path(Tcl_Interp *interp, Tk_Window main_w,
+				       char *path)
+{
+  char *endp;   /* The element in path[] following the first path component */
+  char *first;  /* A copy of the first component of the pathname */
+  int length;   /* The length of the first component of the pathname */
+  Tk_Window w;  /* The Tk window of the first component of the pathname */
+/*
+ * The first character of the path should be a dot.
+ */
+  if(!path || *path == '\0' || *path != '.') {
+    Tcl_AppendResult(interp, "Unknown window: ", path ? path : "(null)",
+		     NULL);
+    return NULL;
+  };
+/*
+ * Find the end of the first component of the pathname.
+ */
+  for(endp=path+1; *endp && *endp != '.'; endp++)
+    ;
+  length = endp - path;
+/*
+ * Make a copy of the name of the first component of the path name.
+ */
+  first = malloc(length + 1);
+  if(!first) {
+    Tcl_AppendResult(interp, "Ran out of memory while finding toplevel window.",
+		     NULL);
+    return NULL;
+  };
+  strncpy(first, path, length);
+  first[length] = '\0';
+/*
+ * Lookup the corresponding window.
+ */
+  w = Tk_NameToWindow(interp, first, main_w);
+/*
+ * Discard the copy.
+ */
+  free(first);
+/*
+ * If the window doesn't exist, Tk_NameToWindow() is documented to place
+ * an error message in interp->result, so just return the error condition.
+ */
+  if(!w)
+    return NULL;
+/*
+ * If the looked up window is a toplevel window return it, otherwise
+ * the toplevel for the specified path must be the main window.
+ */
+  return Tk_IsTopLevel(w) ? w : main_w;
 }

@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include <tcl.h>
+#include <tk.h>
 
 /* Tk PGPLOT-widget package-initialization command */
 

@@ -63,6 +63,13 @@ static CALL_FN(cos_radius_callback);
 static IMAGE_FN(star_fn);
 static CALL_FN(star_callback);
 
+/* Color table menu callbacks */
+
+static CALL_FN(grey_callback);
+static CALL_FN(rainbow_callback);
+static CALL_FN(heat_callback);
+static CALL_FN(aips_callback);
+
 /* Set the default image size */
 
 enum {MAP_SIZE=129};
@@ -116,6 +123,8 @@ static void display_fn(Image *im, IMAGE_FN(*fn));
 static void display_image(Image *im, int id);
 static void display_slice(Image *im, Vertex *va, Vertex *vb);
 static void display_help(Image *im);
+static void recolor_image(Image *im, float *lev, float *r, float *g, float *b,
+			  int n);
 
 /*
  * The following structure is used to describe menu fields to
@@ -182,7 +191,7 @@ int main(int argc, char *argv[])
   w_main = XtVaCreateManagedWidget("main", xmMainWindowWidgetClass, w_top,
 				   XmNscrollBarDisplayPolicy, XmAS_NEEDED,
 				   XmNscrollingPolicy,        XmAUTOMATIC,
-				   XmNheight, 720,
+				   XmNheight, 760,
 				   XmNwidth, 420,
 				   NULL);
 /*
@@ -344,11 +353,11 @@ static Image *new_Image(unsigned image_size, unsigned slice_size,
  */
   {
     char *text = "World coordinates: ";
-    Widget w_clab = XtVaCreateManagedWidget("clab",
-					    xmLabelWidgetClass, w_frame,
-					    XtVaTypedArg, XmNlabelString,
-					    XmRString, text, strlen(text)+1,
-					    NULL);
+    XtVaCreateManagedWidget("clab",
+			    xmLabelWidgetClass, w_frame,
+			    XtVaTypedArg, XmNlabelString,
+			    XmRString, text, strlen(text)+1,
+			    NULL);
   };
   im->w_coord = XtVaCreateManagedWidget("coord",
 					xmLabelWidgetClass, w_frame,
@@ -371,6 +380,7 @@ static Image *new_Image(unsigned image_size, unsigned slice_size,
 					XmNheight, 400,
 					XmNwidth, 400,
 					XmpNmaxColors, 50,
+					XmpNshare, True,
 					XmNtraversalOn, False,
 					NULL);
 /*
@@ -405,6 +415,26 @@ static Image *new_Image(unsigned image_size, unsigned slice_size,
     XtManageChild(menu);
   };
 /*
+ * Create a pulldown menu of optional color tables.
+ */
+  {
+    static MenuItem tables[] = {
+      {"Color Tables", NULL},  /* Title */
+      {NULL, NULL},            /* Separator */
+      {"grey",                 grey_callback},
+      {"rainbow",              rainbow_callback},
+      {"heat",                 heat_callback},
+      {"aips",                 aips_callback},
+    };
+    Widget menu = CreateOptionMenu("Colors", "Select a color table:",
+				   parent,
+				   sizeof(tables)/sizeof(tables[0]),
+				   tables, (XtPointer) im);
+    if(menu == NULL)
+      return del_Image(im);
+    XtManageChild(menu);
+  };
+/*
  * Create an etched-in frame widget to provide a border for the
  * slice-plot window.
  */
@@ -420,6 +450,7 @@ static Image *new_Image(unsigned image_size, unsigned slice_size,
 					XmNheight, 200,
 					XmNwidth, 400,
 					XmpNmaxColors, 16,
+					XmpNshare, True,
 					XmNtraversalOn, False,
 					NULL);
 /*
@@ -530,6 +561,8 @@ static void display_fn(Image *im, IMAGE_FN(*fn))
  */
 static void display_image(Image *im, int id)
 {
+  int minind,maxind;  /* The range of available color indexes */
+  float tr[6];        /* Image coordinate-transformation matrix */
 /*
  * Since rendering a gray-scale image takes a few seconds
  * display the busy cursor.
@@ -546,17 +579,29 @@ static void display_image(Image *im, int id)
   cpgvstd();
   cpgwnad(im->xa * im->scale, im->xb * im->scale,
 	  im->ya * im->scale, im->yb * im->scale);
-  {
-    float tr[6];  /* Coordinate definition matrix */
-    tr[0] = (im->xa - 1) * im->scale;
-    tr[1] = im->scale;
-    tr[2] = 0.0f;
-    tr[3] = (im->ya - 1) * im->scale;
-    tr[4] = 0.0f;
-    tr[5] = im->scale;
+/*
+ * Set up the pixel -> world coordinate transformation matrix.
+ */
+  tr[0] = (im->xa - 1) * im->scale;
+  tr[1] = im->scale;
+  tr[2] = 0.0f;
+  tr[3] = (im->ya - 1) * im->scale;
+  tr[4] = 0.0f;
+  tr[5] = im->scale;
+/*
+ * If there are fewer than 2 colors available for plotting images,
+ * mark the image as monochrome so that pggray can be asked to
+ * produce a stipple version of the image.
+ */
+  cpgqcir(&minind, &maxind);
+  if(maxind-minind+1 <= 2) {
     cpggray(im->image, im->image_size, im->image_size,
 	    1, im->image_size, 1, im->image_size, im->datamax, im->datamin, tr);
+  } else {
+    cpgimag(im->image, im->image_size, im->image_size,
+	    1, im->image_size, 1, im->image_size, im->datamin, im->datamax, tr);
   };
+  cpgsci(1);
   cpgbox("BCNST", 0.0f, 0, "BCNST", 0.0f, 0);
   cpglab("X", "Y", "Image display demo");
 /*
@@ -869,10 +914,10 @@ static Widget CreateOptionMenu(char *name, char *label, Widget parent,
  * Add a title widget.
  */
       } else {
-	Widget widget = XtVaCreateManagedWidget(opt->label,
-				   xmLabelGadgetClass, w_pulldown,
-				   XmNalignment, XmALIGNMENT_BEGINNING,
-				   NULL);
+	XtVaCreateManagedWidget(opt->label,
+				xmLabelGadgetClass, w_pulldown,
+				XmNalignment, XmALIGNMENT_BEGINNING,
+				NULL);
       };
 /*
  * Add a separator widget.
@@ -947,10 +992,10 @@ static Widget CreatePulldownMenu(char *name, char *label, Widget parent,
  * Add a title widget.
  */
       } else {
-	Widget widget = XtVaCreateManagedWidget(field->label,
-				   xmLabelGadgetClass, w_pulldown,
-				   XmNalignment, XmALIGNMENT_BEGINNING,
-				   NULL);
+	XtVaCreateManagedWidget(field->label,
+				xmLabelGadgetClass, w_pulldown,
+				XmNalignment, XmALIGNMENT_BEGINNING,
+				NULL);
       };
 /*
  * Add a separator widget.
@@ -1255,3 +1300,88 @@ static void report_cursor(Widget w, XtPointer context, XEvent *event,
   };
   *call_next = True;
 }
+
+/*.......................................................................
+ * Callback to select a grey colormap fucntion.
+ */
+static CALL_FN(grey_callback)
+{
+  static float grey_l[] = {0.0, 1.0};
+  static float grey_c[] = {0.0, 1.0};
+  recolor_image((Image *) client_data, grey_l, grey_c, grey_c, grey_c,
+		sizeof(grey_l)/sizeof(grey_l[0]));
+}
+
+/*.......................................................................
+ * Callback to select a rainbow colormap fucntion.
+ */
+static CALL_FN(rainbow_callback)
+{
+  static float rain_l[] = {-0.5, 0.0, 0.17, 0.33, 0.50, 0.67, 0.83, 1.0, 1.7};
+  static float rain_r[] = { 0.0, 0.0,  0.0,  0.0,  0.6,  1.0,  1.0, 1.0, 1.0};
+  static float rain_g[] = { 0.0, 0.0,  0.0,  1.0,  1.0,  1.0,  0.6, 0.0, 1.0};
+  static float rain_b[] = { 0.0, 0.3,  0.8,  1.0,  0.3,  0.0,  0.0, 0.0, 1.0};
+  recolor_image((Image *) client_data, rain_l, rain_r, rain_g, rain_b,
+		sizeof(rain_l)/sizeof(rain_l[0]));
+}
+
+/*.......................................................................
+ * Callback to select the IRAF "heat" colormap fucntion.
+ */
+static CALL_FN(heat_callback)
+{
+  static float heat_l[] = {0.0, 0.2, 0.4, 0.6, 1.0};
+  static float heat_r[] = {0.0, 0.5, 1.0, 1.0, 1.0};
+  static float heat_g[] = {0.0, 0.0, 0.5, 1.0, 1.0};
+  static float heat_b[] = {0.0, 0.0, 0.0, 0.3, 1.0};
+  recolor_image((Image *) client_data, heat_l, heat_r, heat_g, heat_b,
+		sizeof(heat_l)/sizeof(heat_l[0]));
+}
+
+/*.......................................................................
+ * Callback to select the aips tvfiddle colormap fucntion.
+ */
+static CALL_FN(aips_callback)
+{
+  static float aips_l[] = {0.0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5,
+			     0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0};
+  static float aips_r[] = {0.0, 0.0, 0.3, 0.3, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0,
+			     0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  static float aips_g[] = {0.0, 0.0, 0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.8, 0.8,
+			     0.6, 0.6, 1.0, 1.0, 1.0, 1.0, 0.8, 0.8, 0.0, 0.0};
+  static float aips_b[] = {0.0, 0.0, 0.3, 0.3, 0.7, 0.7, 0.7, 0.7, 0.9, 0.9,
+			     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+  recolor_image((Image *) client_data, aips_l, aips_r, aips_g, aips_b,
+		sizeof(aips_l)/sizeof(aips_l[0]));
+}
+
+/*.......................................................................
+ * Change the colors used to display the current image.
+ *
+ * Inputs:
+ *  im     Image *  The image widget resource object.
+ *  lev    float *  The array of n normalized brightness levels at which
+ *                  red,green and blue levels are to be defined.
+ *  r      float *  The red brightness at each of the levels in lev[].
+ *  g      float *  The green brightness at each of the levels in lev[].
+ *  b      float *  The blue brightness at each of the levels in lev[].
+ *  n        int    The number of values in each of lev[],r[],g[] and b[].
+ */
+static void recolor_image(Image *im, float *lev, float *r, float *g, float *b,
+			  int n)
+{
+  Boolean share;   /* True if the widget colors are readonly */
+/*
+ * Select the image PGPLOT widget and redefine its colors.
+ */
+  cpgslct(xmp_device_id(im->w_image));
+  cpgctab(lev, r, g, b, n, 1.0, 0.5);
+/*
+ * If the widget's colors were allocated readonly, redraw the image
+ * to reveal the new colors.
+ */
+  XtVaGetValues(im->w_image, XmpNshare, &share, NULL);
+  if(share)
+    display_image(im, xmp_device_id(im->w_image));
+}
+

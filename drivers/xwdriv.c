@@ -261,8 +261,6 @@ typedef struct {
  * draw a line of pixels.
  */
 typedef struct {
-  int npix;            /* The max number of pixels in buff[] */
-  unsigned char *buff; /* The image buffer registered to xi[] */
   XImage *xi;          /* Line of pixels Xlib image object */
 } XWimage;
 
@@ -1831,8 +1829,6 @@ static XWdev *new_XWdev(display, mode)
   xw->update.modified = 0;
   xw->event.mask = NoEventMask;
   xw->event.no_buttons = 0;
-  xw->image.npix = 0;
-  xw->image.buff = NULL;
   xw->image.xi = NULL;
   xw->last_opcode = 0;
   xw->flush_opcode_fn = (Flush_Opcode_fn) 0;
@@ -2007,12 +2003,8 @@ static XWdev *del_XWdev(xw, partial)
 /*
  * Delete the image buffers.
  */
-    xw->image.npix = 0;
-    if(xw->image.buff)
-      free(xw->image.buff);
-    xw->image.buff = NULL;
     if(xw->image.xi)
-      XFree((char *)xw->image.xi);
+      XDestroyImage(xw->image.xi);
     xw->image.xi = NULL;
 /*
  * Check for un-freed polygon points.
@@ -2610,16 +2602,16 @@ static int xw_image_line(xw, start, cells, ncell)
  * Draw up to xw->image.npix pixels at a time. This is the size of the
  * xw->image.buff[] buffer.
  */
-    for(ndone=0; !xw->bad_device && ndone<ncell; ndone += xw->image.npix) {
+    for(ndone=0; !xw->bad_device && ndone<ncell; ndone += XW_IMAGE_LEN) {
       int ntodo = ncell-ndone;
-      int nimage = ntodo < xw->image.npix ? ntodo : xw->image.npix;
+      int nimage = ntodo < XW_IMAGE_LEN ? ntodo : XW_IMAGE_LEN;
 /*
  * Load the image buffer with the color cell indexes assigned to the
  * given PGPLOT color indexes.
  */
       if(xw->color.vi->depth == 8) {
 	for(i=0; i<nimage; i++)
-	  xw->image.buff[i] = xw->color.pixel[(int) (cells[ndone+i] + 0.5)];
+	  xw->image.xi->data[i] = xw->color.pixel[(int)(cells[ndone+i] + 0.5)];
       } else {
 	for(i=0; i<nimage; i++) {
 	  XPutPixel(xw->image.xi, i, 0,
@@ -4258,30 +4250,23 @@ static int xw_get_image(xw, npix)
      XWdev *xw; int npix;
 #endif
 {
-  unsigned nbyte;  /* The number of bytes in the buffer */
 /*
- * Determine the required size of the buffer. This is determined by
- * the size of a pixel (the depth of the window), the number of
- * pixels required, and the max depth that xwdriv allows (32-bit).
- * In order to allow for 32-bit pixels round up the total number of
- * bytes to an integral number of 32-bit words.
- */
-  xw->image.npix = npix;
-  nbyte = ((xw->color.vi->depth * npix + 31) / 32) * 4;
-  xw->image.buff = (unsigned char *) malloc(nbyte * sizeof(char));
-  if(!xw->image.buff)  {
-    fprintf(stderr, "%s: Failed to allocate image buffer.\n", XW_IDENT);
-    return 1;
-  };
-/*
- * Create an X image container for use in transfering pixels to and from
- * xw->image.buff[].
+ * Create the X image that we use to compose lines of pixels with given
+ * colors.
  */
   xw->image.xi = XCreateImage(xw->display, xw->color.vi->visual,
 			      (unsigned)xw->color.vi->depth, ZPixmap, 0,
-			      (char *)xw->image.buff, (unsigned)npix, 1, 32, 0);
+			      NULL, (unsigned)npix, 1, 32, 0);
   if(xw->image.xi==NULL) {
     fprintf(stderr, "%s: Failed to allocate XImage container.\n", XW_IDENT);
+    return 1;
+  };
+/*
+ * Allocate the image buffer.
+ */
+  xw->image.xi->data = malloc((size_t) xw->image.xi->bytes_per_line);
+  if(!xw->image.xi->data) {
+    fprintf(stderr, "%s: Failed to allocate image buffer.\n", XW_IDENT);
     return 1;
   };
   return 0;

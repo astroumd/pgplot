@@ -187,7 +187,7 @@ C        -- machine-dependent!
       CALL GRUSER(INSTR, L)
       IF (L.GT.0) CALL GRPG02(IOERR, UNIT, '% Creator: '//INSTR(1:L))
       CALL GRDATE(INSTR, L)
-      IF (L.GT.0) CALL GRPS02(IOERR, UNIT, '% Date: '//INSTR(1:L))
+      IF (L.GT.0) CALL GRPG02(IOERR, UNIT, '% Date: '//INSTR(1:L))
       RETURN
 C
 C--- IFUNC=10, Close workstation. --------------------------------------

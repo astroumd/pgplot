@@ -55,6 +55,7 @@ C+
 *               BYTE is signed [TJP].
 * 28-Dec-1995 - prevent concurrent access [TJP].
 * 29-Apr-1996 - use GRCTOI to decode environment variables [TJP].
+*  2-Sep-1997 - correct a byte overflow problem
 *-----------------------------------------------------------------------
       CHARACTER*(*) LTYPE, PTYPE, DEFNAM
       INTEGER DWD, DHT, BX, BY
@@ -70,8 +71,8 @@ C+
 C
       INTEGER UNIT, IC, NPICT, MAXIDX, STATE
       INTEGER CTABLE(3,0:255), CDEFLT(3,0:15)
-      INTEGER IER, I, L, LL, IX0, IY0, IX1, IY1, USERW, USERH
-      INTEGER GRGMEM, GRFMEM, GROFIL, GRCTOI
+      INTEGER IER, I, L, LL, IX0, IY0, IX1, IY1, USERW, USERH, JUNK
+      INTEGER GRGMEM, GRFMEM, GROFIL, GRCFIL, GRCTOI
       CHARACTER*80 MSG, INSTR, FILENM
 C
 C Note: for 64-bit operating systems, change the following 
@@ -286,7 +287,7 @@ C
             CALL GRGI06(UNIT, BX, BY, CTABLE, %VAL(PIXMAP), MAXIDX,
      :                  %VAL(WORK))
          END IF
-         CALL GRCFIL (UNIT)
+         JUNK = GRCFIL(UNIT)
          IER = GRFMEM(2*256*4098, WORK)
       END IF
       NPICT = NPICT+1
@@ -673,7 +674,8 @@ C
       IF (J.GT.127) J = J-256
       BLKOUT(BOUT) = J
       IF (BOUT .LT. 254) RETURN
-      BLKOUT(0) = 254
+C!        changed 1997-Sep-2
+      BLKOUT(0) = 254-256
       I = GRWFIL(UNIT, 255, BLKOUT(0))
       BOUT = 0
       END

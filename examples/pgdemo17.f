@@ -282,7 +282,7 @@ C
             C(1)=XARRAY(III)
             C(2)=YARRAY(III)
             C(3)=ZARRAY(III)
-            CALL MATMUL (C,RPOL,CROT)
+            CALL MMULT (C,RPOL,CROT)
             XARRAY(III)=CROT(1)+XOFF
             YARRAY(III)=CROT(2)+YOFF
             ZARRAY(III)=CROT(3)+ZOFF
@@ -299,7 +299,7 @@ C
 C-----------------------------------------------------------------------
       END
 
-      SUBROUTINE MATMUL (VECTOR,RMATRX,ROTVEC)
+      SUBROUTINE MMULT (VECTOR,RMATRX,ROTVEC)
 C     
 C     Matrix multiplication 
 C     

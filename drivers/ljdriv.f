@@ -10,6 +10,7 @@ C
 C Version 1.0  - 1989 Apr 09 - S. C. Allendorf
 C                              Combined all drivers into one driver that
 C                              uses a logical name to choose the format.
+C TJP 1997-Jul-24: replaced ENCODE with WRITE, but still VMS-specific.
 C=======================================================================
 C
 C Supported device: Hewlett Packard LaserJet, LaserJet+, or LaserJet II.
@@ -362,7 +363,7 @@ C                                       start graphics mode.
          WRITE (LUN) ESC, '&a', MSG(1:4), 'h', MSG(5:8), 'V'
       END IF
 C                                       Zero out the plot buffer.
-      CALL GRLJ04 (BX * BY, %VAL(BUFFER), '00'X)
+      CALL GRLJ04 (BX * BY, %VAL(BUFFER))
       RETURN
 C
 C--- IFUNC = 12, Draw line ---------------------------------------------
@@ -598,7 +599,7 @@ C                                       is after loop.
 C                                       (Remember FORTRAN IV!?)
          K = 1
 C                                       Encode length of line
-   10    ENCODE (3, '(I3.3)', KSTR) K
+   10    WRITE (KSTR, '(I3.3)') K
 C                                       Write out the raster line
          WRITE (LUN) ESC, '*b', KSTR, 'W', (BITMAP(I, J), I = 1, K)
       END DO
@@ -750,7 +751,8 @@ C                                       Print each of the substrings
    60          DO I = 1, M
 C                                       Get the number of bytes
                   NBNUM = NB2(I) - FB2(I) + 1
-                  ENCODE (4, 1000, NBYTE) NBNUM
+C                 ENCODE (4, 1000, NBYTE) NBNUM
+                  WRITE (NBYTE, 1000) NBNUM
                   NBNUM2 = GRLJ03 (NBNUM)
 C                                       Calculate the row and column
                   RONUM = K + IYOFF
@@ -760,20 +762,24 @@ C                                       sequence and write it out
                   IF (RONUM .NE. CURROW .AND. CONUM .NE. CURCOL) THEN
                      RNUM = RONUM - CURROW
                      CNUM = CONUM - CURCOL
-                     ENCODE (5, 1010, ROW) RNUM
-                     ENCODE (5, 1010, COL) CNUM
+C                    ENCODE (5, 1010, ROW) RNUM
+C                    ENCODE (5, 1010, COL) CNUM
+                     WRITE (ROW, 1010) RNUM
+                     WRITE (COL, 1010) CNUM
                      RNUM = GRLJ03 (ABS (RNUM)) + 1
                      CNUM = GRLJ03 (ABS (CNUM)) + 1
                      WRITE (LUN) ESC, '*p', ROW(6-RNUM:5), 'y', 
      +                                              COL(6-CNUM:5), 'X'
                   ELSE IF (RONUM .NE. CURROW) THEN
                      RNUM = RONUM - CURROW
-                     ENCODE (5, 1010, ROW) RNUM
+C                    ENCODE (5, 1010, ROW) RNUM
+                     WRITE (ROW, 1010) RNUM
                      RNUM = GRLJ03 (ABS (RNUM)) + 1
                      WRITE (LUN) ESC, '*p', ROW(6-RNUM:5), 'Y'
                   ELSE IF (CONUM .NE. CURCOL) THEN
                      CNUM = CONUM - CURCOL
-                     ENCODE (5, 1010, COL) CNUM
+C                    ENCODE (5, 1010, COL) CNUM
+                     WRITE (COL, 1010) CNUM
                      CNUM = GRLJ03 (ABS (CNUM)) + 1
                      WRITE (LUN) ESC, '*p', COL(6-CNUM:5), 'X'
                   END IF
@@ -782,7 +788,8 @@ C                                       substring
                   IF ((INDEX (X(FB2(I):NB2(I)), ALLONE(1:NBNUM)) .EQ. 1)
      +                 .AND. NBNUM .GE. 5) THEN
                      NBNUM = NBNUM * 8
-                     ENCODE (4, 1000, NBYTE) NBNUM
+C                    ENCODE (4, 1000, NBYTE) NBNUM
+                     WRITE (NBYTE, 1000) NBNUM
                      NBNUM2 = GRLJ03 (NBNUM)
                      WRITE (LUN) ESC, '*c', NBYTE(5-NBNUM2:4), 'A'
                      WRITE (LUN) ESC, '*c0P'
@@ -803,7 +810,7 @@ C                                       Write out raster line
       END DO
 C-----------------------------------------------------------------------
  1000 FORMAT (I4.4)
- 1010 FORMAT (SPI5)
+ 1010 FORMAT (SP,I5)
       RETURN
       END
 

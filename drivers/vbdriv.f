@@ -49,6 +49,9 @@ C 27-Jan-1988 - Version can be sent over BITNET (I hope) [AFT].
 C 27-Sep-1986 - Add color index 0 (erase) [AFT].
 C  5-Aug-1986 - [AFT].
 C-----------------------------------------------------------------------
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE=
+     :     'VBCANON (Canon laser printer, bitmap mode, portrait)')
 	INTEGER    IS2,    IVESC
 	PARAMETER (IS2=30, IVESC=125)
 C- The maximum physical size of the plot in units of .08mm.
@@ -84,8 +87,8 @@ C---
       RETURN
 C
 C--- IFUNC= 1, Return device name. -------------------------------------
-10	CHR='VBCANON'
-	LCHR=7
+10	CHR=TYPE
+	LCHR=LEN(TYPE)
 	RETURN
 C
 C--- IFUNC= 2, Return Physical min and max for plot device. ------------

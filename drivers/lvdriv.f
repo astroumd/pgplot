@@ -29,6 +29,8 @@ C      ref. Digital LN03 Programmer Reference Manual, P/N EK-OLN03-002
 C
 C      PHYICAL SIZE IS 7" BY 9"
 C-----------------------------------------------------------------------
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE='LVN03 (Digital LN03 Laser Printer, portrait)')
 C
       INTEGER MARGIN, NXPIX, NYPIX, NSIXROWS, NSIXCOLS
       PARAMETER(MARGIN=150)
@@ -62,8 +64,8 @@ C
 C
 C--- IFUNC = 1, Return device name.-------------------------------------
 C
- 10   CHR = 'LVN03'
-      LCHR = 5
+ 10   CHR = TYPE
+      LCHR = LEN(TYPE)
       RETURN
 C
 C--- IFUNC = 2, Return physical min and max for plot device, and range

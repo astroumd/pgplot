@@ -35,7 +35,8 @@ C
 C Obtaining hardcopy: Use the command PRINT/PASSALL.
 C-----------------------------------------------------------------------
       CHARACTER*(*) TYPE, DEFNAM
-      PARAMETER (TYPE='GENICOM')
+      PARAMETER (TYPE=
+     :     'GENICOM (Genicom 4410 dot-matrix printer, landscape)')
       PARAMETER (DEFNAM='PGPLOT.PRPLOT')
       BYTE FF
       PARAMETER (FF=12)

@@ -10,10 +10,17 @@ C                9/88 bull: added page eject to IFUNC 14
 C Version 2.0  - 1994 Mar 16 - T. J. Pearson (dual mode, standard F77)
 C Version 2.1  - 1994 Nov  6 - TJP: use PGPLOT_GL_TERMINAL.
 C Version 3.0  - 1997 Jun 11 - TJP: add SC to specify page size.
+C Version 3.1  - 1998 Oct 23 - TJP: correct failure to close file.
+C Version 3.2  - 1998 Nov 9  - TJP: allow up to 8 pens.
 C-----------------------------------------------------------------------
 C     This routine has been written specifically for the HP7475A
 C     Plotter, but should support most HPGL devices, perhaps with
 C     minor modifications.
+C
+C     Color:
+C       Color Index 1-8 are mapped to requests for pens 1-8, so
+C        the actual color depends on what pen is installed. 
+C       Color representation requests (PGSCR) are ignored.
 C
 C     If environment variable PGPLOT_GL_TERMINAL has value YES (or any
 C     string beginning with Y or y), it is assumed that the
@@ -69,7 +76,7 @@ C
 20    RBUF(1) = 0
       RBUF(3) = 0
       RBUF(5) = 1
-      RBUF(6) = 6
+      RBUF(6) = 8
       NBUF = 6
       IF (MODE.EQ.1) THEN
 C        -- landscape (mode=1)
@@ -174,9 +181,9 @@ C
       WRITE (UNIT, '(A)') 'SP;'
       IF (ITERM) THEN
 C this turns off the plotter
-        WRITE (UNIT, '(A)') CHAR(27)//'.)'
-        CLOSE (UNIT)
+         WRITE (UNIT, '(A)') CHAR(27)//'.)'
       ENDIF
+      CLOSE (UNIT)
       CALL GRFLUN(UNIT)
       RETURN
 C
@@ -255,7 +262,6 @@ C
   150 CONTINUE
       IC = NINT(RBUF(1))
       IF (IC.LT.1) IC = 1
-      IF (IC.GT.6) IC = 6
       WRITE (UNIT,'(A,I2,A)') 'SP',IC,';'
       RETURN
 C
@@ -312,3 +318,7 @@ C
       RETURN
 C-----------------------------------------------------------------------
       END
+
+
+
+

@@ -28,6 +28,8 @@ C
 C	We end up with a 9" by 7" display area.
 C
 C-----------------------------------------------------------------------
+	CHARACTER*(*) TYPE
+	PARAMETER (TYPE='LN03 (Digital LN03 Laser Printer, landscape)')
 C
 	INTEGER MARGIN, NXPIX, NYPIX, NSIXROWS, NSIXCOLS
 	PARAMETER(MARGIN=150)
@@ -65,8 +67,8 @@ C
 C
 C--- IFUNC = 1, Return device name.-------------------------------------
 C
-10	CHR = 'LN03'
-	LCHR = 4
+10	CHR = TYPE
+	LCHR = LEN(TYPE)
 	RETURN
 C
 C--- IFUNC = 2, Return physical min and max for plot device, and range

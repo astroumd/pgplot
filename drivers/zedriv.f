@@ -37,6 +37,8 @@ C
 C  5-Aug-1986 - [AFT].
 C-----------------------------------------------------------------------
 C     IMPLICIT NONE
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE='ZETA (Zeta 8 Digital Plotter)')
       INTEGER   IFUNC,NBUF,LCHR,I0,J0,I1,J1
       REAL      RBUF(6)
       CHARACTER CHR*(*)
@@ -51,8 +53,8 @@ C---
       GOTO 999
 C---
 C--- IFUNC= 1, Return device name.
- 10   CHR='ZETA'
-      LCHR=LEN(CHR)
+ 10   CHR=TYPE
+      LCHR=LEN(TYPE)
       RETURN
 C---
 C--- IFUNC= 2, Return Physical min and max for plot device.

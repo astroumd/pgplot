@@ -3,6 +3,9 @@ $! Input files: [.SRC]*.F, PGPLOT.INC, GRPCKG1.INC
 $!              [.SYS_VMS]*.F
 $!              [.DRIVERS]%%DRIV.F
 $! Creates:      GRPCKG.OLB  (object-module library).
+$! Updates:
+$!  19-Oct-1998 D.Maden		In DRIVERS directory, ensure that VTDRIV-VMS.F
+$!				gets compiled rather than VTDRIV.F.
 $!----------------------------------------------------------------------
 $ DELETE = "DELETE/NOLOG/NOCONFIRM"
 $ PURGE  = "PURGE/NOLOG/NOCONFIRM"
@@ -68,6 +71,12 @@ $LOOP:
 $ FILE = F$SEARCH(DRV+"%%DRIV.F")
 $ IF FILE .EQS. "" THEN GOTO ENDLOOP
 $ FILEX = F$PARSE(FILE,,,"NAME","SYNTAX_ONLY")
+$ FILEXVMS = F$SEARCH(drv+filex+"-VMS.F", 2)
+$ if FILEXVMS .nes. "" 
+$ THEN
+$     file = FILEXVMS
+$     filex = f$parse(file,,,"name","syntax_only")
+$ ENDIF
 $ WSO FILEX
 $   FCOMPILE/NODEBUG 'FILE'
 $   LIBRARY/REPLACE TEMP 'FILEX'.OBJ

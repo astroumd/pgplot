@@ -51,6 +51,9 @@ typedef struct {
   XColor *xcolor;       /* 'ncol' colormap color representations */
   int initialized;      /* True after pgx_init_colors() */
   int default_class;    /* The class of the default visual of the screen */
+  int readonly;         /* True if the allocated color-cells are readonly */
+  int nwork;            /* The number of entries in work[] */
+  XColor *work;         /* Work array for shared color allocations */
 } PgxColor;
 
 /*
@@ -73,8 +76,8 @@ typedef struct {
  */
 typedef struct {
   int doclip;           /* True if clipping is enabled */
-  int xmin, xmax;       /* Min/max X-axis pixels excluding pgx->border */
-  int ymin, ymax;       /* Min/max Y-axis pixels excluding pgx->border */
+  int xmin, xmax;       /* Min/max X-axis pixels excluding border */
+  int ymin, ymax;       /* Min/max Y-axis pixels excluding border */
 } PgxClip;
 
 typedef struct PgxState PgxState;
@@ -91,7 +94,10 @@ struct PgxWin {
   GC expose_gc;             /* Expose-event handler graphical context */
   int bad_device;           /* Set to 1 by pgx_bad_device() after fatal error.*/
   char *name;               /* The name of the window */
-  float margin;             /* The default pixmap margin (inches) */
+  int xmargin;              /* The number of pixels to leave blank on */
+                            /*  either side of the plot area (default=0). */
+  int ymargin;              /* The number of pixels to leave blank above */
+                            /*  and below the plot area (default=0). */
   PgxColor *color;          /* The visual/colormap context descriptor */
   PgxScroll scroll;         /* The pixmap scroll context descriptor */
   PgxClip clip;             /* The window clipping area */
@@ -107,6 +113,7 @@ int pgx_pre_opcode ARGS((PgxWin *pgx, int opcode));
 int pgx_scroll ARGS((PgxWin *pgx, unsigned x, unsigned y));
 int pgx_update_clip ARGS((PgxWin *pgx, int doclip, unsigned width,
 			  unsigned height, unsigned border));
+int pgx_set_margin ARGS((PgxWin *pgx, int xmargin, int ymargin));
 int pgx_expose ARGS((PgxWin *pgx, XEvent *event));
 void pgx_start_error_watch ARGS((PgxWin *pgx));
 int pgx_end_error_watch ARGS((PgxWin *pgx));
@@ -124,16 +131,16 @@ int pgx_flush ARGS((PgxWin *pgx));
 int pgx_set_ci ARGS((PgxWin *pgx, int ci));
 void pgx_poly_fill ARGS((PgxWin *pgx, float *rbuf));
 void pgx_rect_fill ARGS((PgxWin *pgx, float *rbuf));
-void pgx_set_lw ARGS((PgxWin *pgx, int lw));
+void pgx_set_lw ARGS((PgxWin *pgx, float lw));
 int pgx_pix_line ARGS((PgxWin *pgx, float *rbuf, int *nbuf));
 void pgx_set_world ARGS((PgxWin *pgx, float *rbuf));
 int pgx_set_rgb ARGS((PgxWin *pgx, int ci, float red, float green, float blue));
 void pgx_get_rgb ARGS((PgxWin *pgx, float *rbuf, int *nbuf));
 void pgx_scroll_rect ARGS((PgxWin *pgx, float *rbuf));
 int pgx_clear_window ARGS((PgxWin *pgx));
-void pgx_get_resolution ARGS((PgxWin *pgx, int *xpix_per_inch, \
-			      int *ypix_per_inch));
-void pgx_def_size ARGS((PgxWin *pgx, unsigned d_width, unsigned d_height,
+void pgx_get_resolution ARGS((PgxWin *pgx, float *xpix_per_inch, \
+			      float *ypix_per_inch));
+void pgx_def_size ARGS((PgxWin *pgx, unsigned d_width, unsigned d_height, \
 		 float *rbuf, int *nbuf));
 void pgx_new_pixmap ARGS((PgxWin *pgx, unsigned width, unsigned height));
 void pgx_begin_picture ARGS((PgxWin *pgx, float *rbuf));
@@ -141,24 +148,24 @@ void pgx_begin_picture ARGS((PgxWin *pgx, float *rbuf));
 int pgx_set_background ARGS((PgxWin *pgx, XColor *xc));
 int pgx_set_foreground ARGS((PgxWin *pgx, XColor *xc));
 
-unsigned pgx_pixmap_width(PgxWin *pgx);
-unsigned pgx_pixmap_height(PgxWin *pgx);
+unsigned pgx_pixmap_width ARGS((PgxWin *pgx));
+unsigned pgx_pixmap_height ARGS((PgxWin *pgx));
 
   /* Convert from X window coordinates to PGPLOT device coordinates */
 
-int pgx_win2dev(PgxWin *pgx, int x, int y, float *rbuf);
+int pgx_win2dev ARGS((PgxWin *pgx, int x, int y, float *rbuf));
 
   /* Convert from PGPLOT device coordinates to PGPLOT world coordinates */
 
-int pgx_dev2world(PgxWin *pgx, float *rbuf);
+int pgx_dev2world ARGS((PgxWin *pgx, float *rbuf));
 
   /* Convert from PGPLOT world coordinates to PGPLOT device coordinates */
 
-int pgx_world2dev(PgxWin *pgx, float *rbuf);
+int pgx_world2dev ARGS((PgxWin *pgx, float *rbuf));
 
   /* Convert from PGPLOT device coordinates to X window coordinates */
 
-int pgx_dev2win(PgxWin *pgx, float *rbuf, int *x, int *y);
+int pgx_dev2win ARGS((PgxWin *pgx, float *rbuf, int *x, int *y));
 
   /* Return the current parent of a given PGPLOT window */
 
@@ -171,7 +178,7 @@ Window pgx_parent_window ARGS((PgxWin *pgx));
 /* Search for a suitable visual as directed by the 'class_name' string */
 
 PgxColor *pgx_new_visual ARGS((PgxWin *pgx, char *class_name, int min_col, \
-		   int max_col));
+		   int max_col, int share));
 
 /* Don't allocate any colors. Instead just use the black and white pixels
  * of the screen to implement a monochrome PGPLOT window.
@@ -181,18 +188,20 @@ PgxColor *pgx_bw_visual ARGS((PgxWin *pgx));
 
 /* Allocate colors from the default (root window) colormap */
 
-PgxColor *pgx_default_visual ARGS((PgxWin *pgx, int min_col, int max_col));
+PgxColor *pgx_default_visual ARGS((PgxWin *pgx, int min_col, int max_col, \
+				   int share));
 
 /* Allocate colors from a specified existing visual/colormap */
 
+
 PgxColor *pgx_adopt_visual ARGS((PgxWin *pgx, VisualID vid, Colormap cmap, \
-			   int min_col, int max_col));
+			   int min_col, int max_col, int share));
 
 /* Allocate colors from the visual/colormap of a specified other window */
 
-PgxColor *pgx_window_visual ARGS((PgxWin *pgx, Window w, int min_col, \
-				  int max_col));
 
+PgxColor *pgx_window_visual ARGS((PgxWin *pgx, Window w, int min_col, \
+				  int max_col, int share));
 /* Delete pgx->color */
 
 PgxColor *pgx_del_visual ARGS((PgxWin *pgx));

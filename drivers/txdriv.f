@@ -476,7 +476,7 @@ C
    10 CONTINUE
 C ***      This is the name seen when a "?" is entered by the user for
 C ***      the desired output device for PGPLOT.
-      CHR='TX -TeX PK Font generation'
+      CHR='TX (TeX PK Font generation)'
       LCHR=LEN(CHR)
       NBUF = 0
       RETURN

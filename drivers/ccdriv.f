@@ -36,6 +36,8 @@ C following form before executing your program:
 C
 C $ DEFINE PGPLOT_CC_MODE PORTRAIT
 C-----------------------------------------------------------------------
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE='CC (DEC LJ250 Color Companion printer)')
       BYTE       CTAB(3, 256), FF
       LOGICAL    HIRES, INIT, LANDSCAPE
       INTEGER*4  BUFFER, BX, BY, I, IC, IER, GRFMEM, GRGMEM
@@ -83,9 +85,9 @@ C
 C--- IFUNC = 1, Return device name -------------------------------------
 C
    10 CONTINUE
-      CHR = 'CC'
+      CHR = TYPE
       NBUF = 0
-      LCHR = 2
+      LCHR = LEN(TYPE)
       RETURN
 C
 C--- IFUNC = 2, Return physical min and max for plot device, and range

@@ -3,20 +3,22 @@
 # This generates the PGPLOT binary files (libraries and demos) in the
 # current default directory (which need not be the source directory).
 #
-#	Directory containing source code
-SRC=..
-SRCDIR=$(SRC)\pgplot\src
+#	Directory containing PGPLOT source code
+PGTOP=\pgplot
+SRCDIR=$(PGTOP)\src
 #	Directory containing demo programs
-DEMODIR=$(SRC)\pgplot\examples
+DEMODIR=$(PGTOP)\examples
+#	Directory containing device drivers
+DRIVDIR=$(PGTOP)\DRIVERS
 #	Directory containing font stuff
-FONTDIR=$(SRC)\pgplot\fonts
+FONTDIR=$(PGTOP)\fonts
 #	Directory containing system-dependent code
-SYSDIR=$(SRC)\pgplot\sys_dos
+SYSDIR=$(PGTOP)\sys_dos
 #	Directory to put the libraries
 LIBDIR=.
 #	Fortran compiler
 FCOMPL=FL
-FFLAGC=/Gt
+FFLAGC=/Gt /FPc
 #	C compiler
 CCOMPL=
 CFLAGC=
@@ -24,13 +26,20 @@ CFLAGC=
 LIBS   = .\PGPLOT+GRAPHICS
 
 #	Rules for compiling Fortran
-.SUFFIXES: .F .FOR .OBJ
+.SUFFIXES: .F .OBJ
 
-{SRC\}.FOR.OBJ:
-	$(FCOMPL) /c $(FFLAGC) src\$<
+{$(SRCDIR)}.F.OBJ:
+	COPY $(SRCDIR)\$*.F $*.FOR
+	$(FCOMPL) /c $(FFLAGC) $*.FOR
+	DEL $*.FOR
 
-{SRC\}.F.OBJ:
-	COPY src\$*.F $*.FOR
+{$(DRIVDIR)}.F.OBJ:
+	COPY $(DRIVDIR)\$*.F $*.FOR
+	$(FCOMPL) /c $(FFLAGC) $*.FOR
+	DEL $*.FOR
+
+{$(SYSDIR)}.F.OBJ:
+	COPY $(SYSDIR)\$*.F $*.FOR
 	$(FCOMPL) /c $(FFLAGC) $*.FOR
 	DEL $*.FOR
 
@@ -45,35 +54,53 @@ all: PGPLOT.LIB GRFONT.DAT PROG
 #   SYSTEM_ROUTINES: potentially non-portable routines, usually
 #	operating-system dependent
 #-----------------------------------------------------------------------
-PGPLOT.LIB:: $(SRC)\pgplot.inc $(SRC)\grpckg1.inc
+PGPLOT.LIB:: pgplot.inc grpckg1.inc
 	REM
-PGPLOT.LIB:: pgask.obj pgbbuf.obj pgbeg.obj pgbin.obj pgbox.obj pgbox1.obj
+PGPLOT.LIB:: pgask.obj pgarro.obj pgband.obj pgbbuf.obj pgbeg.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB::pgcn01.obj pgcnsc.obj pgconb.obj pgcons.obj pgcont.obj pgconx.obj
+PGPLOT.LIB:: pgbin.obj pgbox.obj pgbox1.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgcp.obj pgcurs.obj pgdraw.obj pgebuf.obj pgend.obj pgenv.obj
+PGPLOT.LIB:: pgcirc.obj pgcl.obj   pgclos.obj pgcn01.obj pgcnsc.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB::pgerrb.obj pgerrx.obj pgerry.obj pgetxt.obj pgfunt.obj pgfunx.obj
+PGPLOT.LIB:: pgconb.obj pgconl.obj pgcons.obj pgcont.obj pgconx.obj pgcp.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB::pgfuny.obj pggray.obj pghi2d.obj pghis1.obj pghist.obj pgiden.obj
+PGPLOT.LIB:: pgctab.obj pgcurs.obj pgdraw.obj pgebuf.obj pgend.obj pgenv.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgeras.obj pgerrb.obj pgerrx.obj pgerry.obj pgetxt.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgfunt.obj pgfunx.obj pgfuny.obj pggray.obj pghi2d.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pghis1.obj pghist.obj pghtch.obj pgiden.obj pgimag.obj pginit.obj
 	LIB PGPLOT -+$?;
 PGPLOT.LIB:: pglab.obj pglcur.obj pgldev.obj pglen.obj pgline.obj pgmove.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgmtxt.obj pgncur.obj pgnpl.obj pgnumb.obj pgolin.obj pgpage.obj
+PGPLOT.LIB:: pgmtxt.obj pgncur.obj pgnoto.obj pgnpl.obj pgnumb.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgolin.obj pgopen.obj pgpage.obj
 	LIB PGPLOT -+$?;
 PGPLOT.LIB:: pgpap.obj pgpixl.obj pgpnts.obj pgpoly.obj pgpt.obj pgptxt.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgqcf.obj pgqch.obj pgqci.obj pgqcol.obj pgqcr.obj pgqfs.obj
+PGPLOT.LIB:: pgqah.obj pgqcf.obj  pgqch.obj  pgqci.obj  pgqcir.obj pgqcol.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgqinf.obj pgqls.obj  pgqlw.obj  pgqpos.obj pgqvp.obj  pgqwin.obj
+PGPLOT.LIB:: pgqcr.obj pgqcs.obj pgqfs.obj pgqhs.obj pgqinf.obj pgqls.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgrect.obj pgrnd.obj  pgrnge.obj pgscf.obj  pgsch.obj  pgsci.obj
+PGPLOT.LIB:: pgqlw.obj  pgqpos.obj pgqtbg.obj pgqtxt.obj pgqvp.obj  pgqvsz.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgscr.obj  pgsfs.obj  pgshls.obj pgsls.obj  pgslw.obj  pgsvp.obj
+PGPLOT.LIB:: pgqwin.obj pgrect.obj pgrnd.obj  pgrnge.obj pgsah.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgswin.obj pgtbox.obj pgtext.obj pgtime.obj pgtlab.obj pgtlb1.obj
+PGPLOT.LIB:: pgsave.obj pgscf.obj  pgsch.obj pgsci.obj pgslct.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: pgupdt.obj pgvsiz.obj pgvstd.obj pgvw.obj   pgwnad.obj
+PGPLOT.LIB:: pgscr.obj pgscrn.obj pgsfs.obj pgshls.obj pgshs.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgsls.obj  pgslw.obj  pgstbg.obj pgsubp.obj pgsvp.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgswin.obj pgtbox.obj pgtext.obj pgupdt.obj pgvect.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgvsiz.obj pgvstd.obj pgvw.obj   pgwedg.obj pgwnad.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grdot1.obj pgconf.obj pgerr1.obj pgpt1.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: pgqclp.obj pgqdt.obj  pgqndt.obj pgsclp.obj pgtikl.obj
 	LIB PGPLOT -+$?;
 
 PGPLOT.LIB:: pgadvanc.obj pgbegin.obj  pgcurse.obj  pglabel.obj
@@ -85,80 +112,70 @@ PGPLOT.LIB:: pgptext.obj   pgvport.obj  pgvsize.obj  pgvstand.obj
 PGPLOT.LIB:: pgwindow.obj
 	LIB PGPLOT -+$?;
 
-PGPLOT.LIB:: grarea.obj grbpic.obj grchsz.obj grclip.obj
+PGPLOT.LIB:: grarea.obj grbpic.obj grchsz.obj grclip.obj grclos.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grclos.obj grclpl.obj grcurs.obj grdot0.obj grdtyp.obj
+PGPLOT.LIB:: grclpl.obj grctoi.obj grcurs.obj grdot0.obj grdtyp.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: gresc.obj gretxt.obj grfa.obj
+PGPLOT.LIB:: grepic.obj gresc.obj gretxt.obj grfa.obj grfao.obj grgfil.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grgray.obj grgrgr.obj grgrps.obj grqci.obj grqdev.obj grqdt.obj
+PGPLOT.LIB:: grgray.obj grimg0.obj grimg1.obj grimg2.obj grimg3.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grinit.obj grldev.obj grlen.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grlin0.obj grlin1.obj grlin2.obj grlin3.obj grlina.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB::grmcur.obj grmker.obj grmova.obj grmsg.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: gropen.obj grpage.obj grpars.obj grpixl.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grpocl.obj grprom.obj grpxps.obj grqcap.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grqci.obj grqcr.obj grqdev.obj grqdt.obj
 	LIB PGPLOT -+$?;
 PGPLOT.LIB:: grqfnt.obj grqcol.obj grqls.obj  grqlw.obj grqpos.obj grqtyp.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grldev.obj grlen.obj grlin0.obj grlin1.obj grlin2.obj grlin3.obj
+PGPLOT.LIB:: grqdev.obj grqtxt.obj grquit.obj grrect.obj grscr.obj grskpb.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grlina.obj grmcur.obj grmker.obj grmova.obj gropen.obj
-	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grpage.obj grpars.obj grrect.obj grscr.obj grslct.obj
-	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grsetc.obj grsci.obj grsfnt.obj grsls.obj grslw.obj
+PGPLOT.LIB:: grslct.obj grsetc.obj grsci.obj grsfnt.obj grsls.obj grslw.obj
 	LIB PGPLOT -+$?;
 PGPLOT.LIB:: grsets.obj grsize.obj grsyds.obj grsymk.obj grsyxd.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grterm.obj grtext.obj grtoup.obj grtrn0.obj grtxy0.obj
+PGPLOT.LIB:: grterm.obj grtext.obj grtoup.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grvct0.obj grxhls.obj grxrgb.obj grqdev.obj grsfs.obj grpixl.obj
+PGPLOT.LIB:: grtrim.obj grtrn0.obj grtxy0.obj
 	LIB PGPLOT -+$?;
-PGPLOT.LIB:: grpxpo.obj grpxpx.obj grpxre.obj grrec0.obj grfao.obj gritoc.obj
+PGPLOT.LIB:: grvct0.obj grwarn.obj grxhls.obj grxrgb.obj
+	LIB PGPLOT -+$?;
+PGPLOT.LIB:: grpxpo.obj grpxpx.obj grpxre.obj grrec0.obj gritoc.obj
 	LIB PGPLOT -+$?;
 
-PGPLOT.LIB:: grexec.obj grdos.obj grsy00.obj msdriv.obj
+# These files come from sys_dos directory
+PGPLOT.LIB:: grexec.obj msdriv.obj grdate.obj grflun.obj grgcom.obj
 	LIB PGPLOT -+$?;
-grexec.obj : $(SYSDIR)\grexec.for
-	COPY $(SYSDIR)\grexec.for .
-	$(FCOMPL) /c $(FFLAGC) grexec.for
-	DEL grexec.for
-grdos.obj : $(SYSDIR)\grdos.for
-	COPY $(SYSDIR)\grdos.for .
-	$(FCOMPL) /c $(FFLAGC) grdos.for
-	DEL grdos.for
-grsy00.obj : $(SYSDIR)\grsy00.for
-	COPY $(SYSDIR)\grsy00.for .
-	$(FCOMPL) /c $(FFLAGC) grsy00.for
-	DEL grsy00.for
-msdriv.obj : $(SYSDIR)\msdriv.for
-	COPY $(SYSDIR)\msdriv.for .
-	$(FCOMPL) /c $(FFLAGC) msdriv.for
-	DEL msdriv.for
+PGPLOT.LIB:: grgenv.obj grglun.obj groptx.obj grtrml.obj grtter.obj gruser.obj
+	LIB PGPLOT -+$?;
+# These files are found in pgplot\sys
+PGPLOT.LIB:: grlgtr.obj grsy00.obj
+	LIB PGPLOT -+$?;
+
+grlgtr.obj:	$(PGTOP)\sys\grlgtr.f
+	COPY $(PGTOP)\sys\grlgtr.F grlgtr.FOR
+	$(FCOMPL) /c $(FFLAGC) grlgtr.FOR
+	DEL grlgtr.FOR
+grsy00.obj:	$(PGTOP)\sys\grsy00.f
+	COPY $(PGTOP)\sys\grsy00.F grsy00.FOR
+	$(FCOMPL) /c $(FFLAGC) grsy00.FOR
+	DEL grsy00.FOR
 
 #-----------------------------------------------------------------------
 # Device drivers
 #-----------------------------------------------------------------------
-CGDRIVER=cgdriv.obj cfopenvws.obj
-GFDRIVER=gfdriv.obj grre01.obj grte02.obj grre04.obj grgf04.obj lib_get_vm.obj
-GTDRIVER=gtdriv.obj grre01.obj grte02.obj grte04.obj grgf04.obj grtk01.obj
-IMDRIVER=imdriv.obj grim00.obj grim02.obj grim03.obj lib_get_vm.obj
-IVDRIVER=ivdriv.obj griv00.obj grivas.obj
 LJDRIVER=ljdriv.obj grlj00.obj
 LLDRIVER=lldriv.obj grlj00.obj
 NUDRIVER=nudriv.obj
-PSDRIVER=psdriv.obj grps01.obj grps02.obj
-VPDRIVER=vpdriv.obj
-PXDRIVER=pxdriv.obj grpx01.obj grpx02.obj lib_get_vm.obj gribf1.obj
+PSDRIVER=psdriv.obj
 QMDRIVER=qmdriv.obj grqm00.obj
 QPDRIVER=qpdriv.obj grqm00.obj
-REDRIVER=redriv.obj grre01.obj grre02.obj grre04.obj
-SVDRIVER=svdriv.obj svblock.obj
-TEDRIVER=tedriv.obj grte01.obj grte02.obj grte04.obj lib_get_vm.obj
-TFDRIVER=tfdriv.obj grtf01.obj grtf02.obj grtf03.obj lib_get_vm.obj
-TKDRIVER=tkdriv.obj grtk00.obj grtk01.obj
-TVDRIVER=tvdriv.obj grtv00.obj
-VEDRIVER=vedriv.obj grve01.obj grve02.obj lib_get_vm.obj gribf1.obj
-VTDRIVER=vtdriv.obj grvt02.obj grvt03.obj
-VVDRIVER=vvdriv.obj grve01.obj grve02.obj lib_get_vm.obj gribf1.obj
-ZSDRIVER=zsdriv.obj grzs01.obj grzs02.obj grzs03.obj grzs04.obj grzs05.obj
-XWDRIVER=xwdriv.obj xwblock.obj
-X2DRIVER=x2driv.obj
 
 # Compile drivers that compile under Microsoft Fortran.
 # Not all these drivers have actually been tested.
@@ -166,12 +183,6 @@ PGPLOT.LIB:: $(NUDRIVER)
 	LIB PGPLOT -+$(NUDRIVER);
 PGPLOT.LIB:: $(PSDRIVER)
 	LIB PGPLOT -+$(PSDRIVER);
-PGPLOT.LIB:: $(REDRIVER)
-	LIB PGPLOT -+$(REDRIVER);
-PGPLOT.LIB:: $(VPDRIVER)
-	LIB PGPLOT -+$(VPDRIVER);
-PGPLOT.LIB:: $(ZSDRIVER)
-	LIB PGPLOT -+$(ZSDRIVER);
 
 #
 # Note that if you want to build a sharable library including these routines,
@@ -200,8 +211,10 @@ PGOBS.LIB : $(OBSOLETE_ROUTINES)
 # individually.
 #-----------------------------------------------------------------------
 # List of demo programs
-DEMOS = pgdemo1.exe pgdemo2.exe pgdemo3.exe pgex5.exe pgex13.exe pgex14.exe \
-      pgex15.exe pgex17.exe pgex18.exe pgex22.exe pgex23.exe pgex24.exe
+DEMOS = pgdemo1.exe  pgdemo2.exe  pgdemo3.exe  pgdemo4.exe  pgdemo5.exe \
+	pgdemo6.exe  pgdemo7.exe  pgdemo8.exe  pgdemo9.exe  pgdemo10.exe \
+	pgdemo11.exe pgdemo12.exe pgdemo13.exe pgdemo14.exe pgdemo15.exe \
+	pgdemo16.exe pgdemo17.exe
 
 prog: $(DEMOS)
 
@@ -220,51 +233,76 @@ pgdemo3.exe: $(DEMODIR)\pgdemo3.f
 	$(FCOMPL) /c $(FFLAGC) pgdemo3.FOR
 	LINK /SEGMENTS:256 pgdemo3.obj,,NUL,$(LIBS);
 	DEL pgdemo3.for
-pgex5.exe: $(DEMODIR)\pgex5.f
-	COPY $(DEMODIR)\pgex5.f pgex5.for
-	$(FCOMPL) /c $(FFLAGC) pgex5.FOR
-	LINK /SEGMENTS:256 pgex5.obj,,NUL,$(LIBS);
-	DEL pgex5.for
-pgex13.exe: $(DEMODIR)\pgex13.f
-	COPY $(DEMODIR)\pgex13.f pgex13.for
-	$(FCOMPL) /c $(FFLAGC) pgex13.FOR
-	LINK /SEGMENTS:256 pgex13.obj,,NUL,$(LIBS);
-	DEL pgex13.for
-pgex14.exe: $(DEMODIR)\pgex14.f
-	COPY $(DEMODIR)\pgex14.f pgex14.for
-	$(FCOMPL) /c $(FFLAGC) pgex14.FOR
-	LINK /SEGMENTS:256 pgex14.obj,,NUL,$(LIBS);
-	DEL pgex14.for
-pgex15.exe: $(DEMODIR)\pgex15.f
-	COPY $(DEMODIR)\pgex15.f pgex15.for
-	$(FCOMPL) /c $(FFLAGC) pgex15.FOR
-	LINK /SEGMENTS:256 pgex15.obj,,NUL,$(LIBS);
-	DEL pgex15.for
-pgex17.exe: $(DEMODIR)\pgex17.f
-	COPY $(DEMODIR)\pgex17.f pgex17.for
-	$(FCOMPL) /c $(FFLAGC) pgex17.FOR
-	LINK /SEGMENTS:256 pgex17.obj,,NUL,$(LIBS);
-	DEL pgex17.for
-pgex18.exe: $(DEMODIR)\pgex18.f
-	COPY $(DEMODIR)\pgex18.f pgex18.for
-	$(FCOMPL) /c $(FFLAGC) pgex18.FOR
-	LINK /SEGMENTS:256 pgex18.obj,,NUL,$(LIBS);
-	DEL pgex18.for
-pgex22.exe: $(DEMODIR)\pgex22.f
-	COPY $(DEMODIR)\pgex22.f pgex22.for
-	$(FCOMPL) /c $(FFLAGC) pgex22.FOR
-	LINK /SEGMENTS:256 pgex22.obj,,NUL,$(LIBS);
-	DEL pgex22.for
-pgex23.exe: $(DEMODIR)\pgex23.f
-	COPY $(DEMODIR)\pgex23.f pgex23.for
-	$(FCOMPL) /c $(FFLAGC) pgex23.FOR
-	LINK /SEGMENTS:256 pgex23.obj,,NUL,$(LIBS);
-	DEL pgex23.for
-pgex24.exe: $(DEMODIR)\pgex24.f
-	COPY $(DEMODIR)\pgex24.f pgex24.for
-	$(FCOMPL) /c $(FFLAGC) pgex24.FOR
-	LINK /SEGMENTS:256 pgex24.obj,,NUL,$(LIBS);
-	DEL pgex24.for
+pgdemo4.exe: $(DEMODIR)\pgdemo4.f
+	COPY $(DEMODIR)\pgdemo4.f pgdemo4.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo4.FOR
+	LINK /SEGMENTS:256 pgdemo4.obj,,NUL,$(LIBS);
+	DEL pgdemo4.for
+pgdemo5.exe: $(DEMODIR)\pgdemo5.f
+	COPY $(DEMODIR)\pgdemo5.f pgdemo5.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo5.FOR
+	LINK /SEGMENTS:256 pgdemo5.obj,,NUL,$(LIBS);
+	DEL pgdemo5.for
+pgdemo6.exe: $(DEMODIR)\pgdemo6.f
+	COPY $(DEMODIR)\pgdemo6.f pgdemo6.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo6.FOR
+	LINK /SEGMENTS:256 pgdemo6.obj,,NUL,$(LIBS);
+	DEL pgdemo6.for
+pgdemo7.exe: $(DEMODIR)\pgdemo7.f
+	COPY $(DEMODIR)\pgdemo7.f pgdemo7.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo7.FOR
+	LINK /SEGMENTS:256 pgdemo7.obj,,NUL,$(LIBS);
+	DEL pgdemo7.for
+pgdemo8.exe: $(DEMODIR)\pgdemo8.f
+	COPY $(DEMODIR)\pgdemo8.f pgdemo8.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo8.FOR
+	LINK /SEGMENTS:256 pgdemo8.obj,,NUL,$(LIBS);
+	DEL pgdemo8.for
+pgdemo9.exe: $(DEMODIR)\pgdemo9.f
+	COPY $(DEMODIR)\pgdemo9.f pgdemo9.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo9.FOR
+	LINK /SEGMENTS:256 pgdemo9.obj,,NUL,$(LIBS);
+	DEL pgdemo9.for
+pgdemo10.exe: $(DEMODIR)\pgdemo10.f
+	COPY $(DEMODIR)\pgdemo10.f pgdemo10.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo10.FOR
+	LINK /SEGMENTS:256 pgdemo10.obj,,NUL,$(LIBS);
+	DEL pgdemo10.for
+pgdemo11.exe: $(DEMODIR)\pgdemo11.f
+	COPY $(DEMODIR)\pgdemo11.f pgdemo11.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo11.FOR
+	LINK /SEGMENTS:256 pgdemo11.obj,,NUL,$(LIBS);
+	DEL pgdemo11.for
+pgdemo12.exe: $(DEMODIR)\pgdemo12.f
+	COPY $(DEMODIR)\pgdemo12.f pgdemo12.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo12.FOR
+	LINK /SEGMENTS:256 pgdemo12.obj,,NUL,$(LIBS);
+	DEL pgdemo12.for
+pgdemo13.exe: $(DEMODIR)\pgdemo13.f
+	COPY $(DEMODIR)\pgdemo13.f pgdemo13.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo13.FOR
+	LINK /SEGMENTS:256 pgdemo13.obj,,NUL,$(LIBS);
+	DEL pgdemo13.for
+pgdemo14.exe: $(DEMODIR)\pgdemo14.f
+	COPY $(DEMODIR)\pgdemo14.f pgdemo14.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo14.FOR
+	LINK /SEGMENTS:256 pgdemo14.obj,,NUL,$(LIBS);
+	DEL pgdemo14.for
+pgdemo15.exe: $(DEMODIR)\pgdemo15.f
+	COPY $(DEMODIR)\pgdemo15.f pgdemo15.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo15.FOR
+	LINK /SEGMENTS:256 pgdemo15.obj,,NUL,$(LIBS);
+	DEL pgdemo15.for
+pgdemo16.exe: $(DEMODIR)\pgdemo16.f
+	COPY $(DEMODIR)\pgdemo16.f pgdemo16.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo16.FOR
+	LINK /SEGMENTS:256 pgdemo16.obj,,NUL,$(LIBS);
+	DEL pgdemo16.for
+pgdemo17.exe: $(DEMODIR)\pgdemo17.f
+	COPY $(DEMODIR)\pgdemo17.f pgdemo17.for
+	$(FCOMPL) /c $(FFLAGC) pgdemo17.FOR
+	LINK /SEGMENTS:256 pgdemo17.obj,,NUL,$(LIBS);
+	DEL pgdemo17.for
 
 #-----------------------------------------------------------------------
 # Target "grfont.dat" is the binary font file.
@@ -309,7 +347,7 @@ SPOTLESS: CLEAN
 # Include file dependencies:
 # The following PG routines reference `pgplot.inc'
 
-grgray.o grgrgr.o grgrps.o \
+grgray.o \
 pgask.o  pgbbuf.o pgbeg.o  pgbin.o  pgbox.o  pgcont.o pgcp.o \
 pgcurs.o pgebuf.o pgend.o  pgerrb.o pgerrx.o pgerry.o pggray.o pghi2d.o \
 pghist.o pgiden.o pglcur.o pglen.o  pgmtxt.o pgncur.o pgolin.o \
@@ -326,15 +364,12 @@ grlina.o grlinr.o grmker.o grmova.o grmovr.o gropen.o grpage.o \
 grpixl.o grpxpo.o grpxpx.o \
 grqci.o  grqcol.o grqdev.o grqdt.o  grqfnt.o grqls.o  \
 grqlw.o  grqpos.o grqtyp.o grrec0.o grrect.o \
-grsci.o  grscr.o  grsetc.o grsetli.o grsets.o grsfnt.o grsfs.o grsize.o \
+grsci.o  grscr.o  grsetc.o grsetli.o grsets.o grsfnt.o grsize.o \
 grslct.o grsls.o  grslw.o  grterm.o grtext.o grtrn0.o grtxy0.o \
-grvct0.o: $(SRC)/grpckg1.inc
+grvct0.o: $(SRCDIR)/grpckg1.inc
 
-griv00.o : $(SRCDIR)/gadef.h $(SRCDIR)/gmdef.h $(SRCDIR)/gphdef.h
-grtv00.o : $(SRCDIR)/imdef.h
-
-$(SRC)\pgplot.inc: $(SRCDIR)\pgplot.inc
+pgplot.inc: $(SRCDIR)\pgplot.inc
 	COPY $(SRCDIR)\pgplot.inc .
 
-$(SRC)\grpckg1.inc: $(SRCDIR)\grpckg1.inc
+grpckg1.inc: $(SRCDIR)\grpckg1.inc
 	COPY $(SRCDIR)\grpckg1.inc .

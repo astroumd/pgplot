@@ -57,6 +57,9 @@ C---
 C 13-Mar-1987 - [AFT].
 C  4-MAR-1988 - Tidy code [AFT]
 C-----------------------------------------------------------------------
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE=
+     :     'BCANON (Canon laser printer, bitmap mode, landscape)')
       CHARACTER MSG*10
       INTEGER   GRGMEM, GRFMEM
       INTEGER   LUN, IXDIM, IYDIM, LENBUF, IBADR, IER
@@ -73,8 +76,8 @@ C---
       RETURN
 C
 C--- IFUNC= 1, Return device name. -------------------------------------
-   10 CHR='BCANON'
-      LCHR=LEN(CHR)
+   10 CHR=TYPE
+      LCHR=LEN(TYPE)
       RETURN
 C
 C--- IFUNC= 2, Return Physical min and max for plot device. ------------

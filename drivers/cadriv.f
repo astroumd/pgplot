@@ -1,7 +1,7 @@
-        SUBROUTINE CADRIV(IFUNC,RBUF,NBUF,CHR,LCHR)
-        INTEGER   IFUNC, NBUF, LCHR
-        REAL      RBUF(*)
-        CHARACTER CHR*(*)
+      SUBROUTINE CADRIV(IFUNC,RBUF,NBUF,CHR,LCHR)
+      INTEGER   IFUNC, NBUF, LCHR
+      REAL      RBUF(*)
+      CHARACTER CHR*(*)
 C
 C PGPLOT driver for Canon Laser printer.
 C
@@ -55,42 +55,44 @@ C 14-Nov-1991 - [MCS] 11 colour indexes are already implemented as fill
 C               patterns - however device info on this said there were
 C               only 0 and 1 - corrected IFUNC 2 now reports 11 colours
 C-----------------------------------------------------------------------
-        INTEGER    IS2,    IVESC
-        PARAMETER (IS2=30, IVESC=125)
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE='CANON (Canon LBP-8/A2 Laser printer, landscape)')
+      INTEGER    IS2,    IVESC
+      PARAMETER (IS2=30, IVESC=125)
 C- The maximum physical size of the plot in units of 1/300 inch.
-        INTEGER    MXLEN,      MXWID
-        PARAMETER (MXLEN=3366, MXWID=2362)
+      INTEGER    MXLEN,      MXWID
+      PARAMETER (MXLEN=3366, MXWID=2362)
 C- Default size of plot.
-        INTEGER    IDEFL,      IDEFW
-        PARAMETER (IDEFL=2835, IDEFW=2244)
+      INTEGER    IDEFL,      IDEFW
+      PARAMETER (IDEFL=2835, IDEFW=2244)
 C
-        CHARACTER CBUF*256
-        CHARACTER MSG*10
-        CHARACTER CDASH(5),CFILL(0:11)
-        INTEGER   I0, J0, I1, J1, IER
-        INTEGER   LUN, ICOL, NPTS, LBUF, LASX, LASY
-        SAVE      LUN, ICOL, NPTS, LBUF, LASX, LASY
+      CHARACTER CBUF*256
+      CHARACTER MSG*10
+      CHARACTER CDASH(5),CFILL(0:11)
+      INTEGER   I0, J0, I1, J1, IER
+      INTEGER   LUN, ICOL, NPTS, LBUF, LASX, LASY
+      SAVE      LUN, ICOL, NPTS, LBUF, LASX, LASY
 C---
 C- Patterns defined with 2 and " appear the same on our Canon
 C- so only one is used.  Pattern 0 causes the polygon not to
 C- be filled.  Pattern ) erases interior of polygon is the
 C- last character in list as all colors > max are set to
 C- this pattern.
-        DATA CFILL/')','1','(','''','&','%',
-     :          '$','2','#','!','0',')'/
-        DATA CDASH/'0','1','3','"','4'/
+      DATA CFILL/')','1','(','''','&','%',
+     :     '$','2','#','!','0',')'/
+      DATA CDASH/'0','1','3','"','4'/
 C---
-        GOTO( 10, 20, 30, 40, 50, 60, 70, 80, 90,100,
-     :       110,120,130,140,150,160,900,180,190,200,
-     :       210) IFUNC
-  900 WRITE (MSG,'(I10)') IFUNC
+      GOTO( 10, 20, 30, 40, 50, 60, 70, 80, 90,100,
+     :     110,120,130,140,150,160,900,180,190,200,
+     :     210) IFUNC
+ 900  WRITE (MSG,'(I10)') IFUNC
       CALL GRWARN('Unimplemented function in CA device driver: '//MSG)
       NBUF = -1
       RETURN
 C
 C--- IFUNC= 1, Return device name. -------------------------------------
-10      CHR='CANON'
-        LCHR=5
+10      CHR=TYPE
+        LCHR=LEN(TYPE)
         RETURN
 C
 C--- IFUNC= 2, Return Physical min and max for plot device. ------------

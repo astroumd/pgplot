@@ -44,7 +44,7 @@ C    or DEFINE PGPLOT_LA50 TXZ99: (be sure that TXZ99 has been set
 C    /FORM if page spacing is important)
 C-----------------------------------------------------------------------
       CHARACTER*(*) TYPE, DEFNAM
-      PARAMETER (TYPE='LA50 ')
+      PARAMETER (TYPE='LA50 (DEC LA50 printer)')
       PARAMETER (DEFNAM='PGPLOT_LA50:PGPLOT.LAPLOT')
 C
       INTEGER UNIT, IER, IC, BX, BY, NPICT

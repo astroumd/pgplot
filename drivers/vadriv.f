@@ -58,6 +58,8 @@ C               patterns - however device info on this said there were
 C               only 0 and 1 - corrected IFUNC 2 now reports 11 colours
 C 15-Nov-1991 - [MCS] Converted to portrait mode - /vcanon.
 C-----------------------------------------------------------------------
+      CHARACTER*(*) TYPE
+      PARAMETER (TYPE='VCANON (Canon LBP-8/A2 Laser printer, portrait)')
       INTEGER    IS2,    IVESC
       PARAMETER (IS2=30, IVESC=125)
 C- The maximum physical size of the plot in units of 1/300 inch.
@@ -92,8 +94,8 @@ C---
       RETURN
 C
 C--- IFUNC= 1, Return device name. -------------------------------------
- 10   CHR='VCANON'
-      LCHR=6
+ 10   CHR=TYPE
+      LCHR=LEN(TYPE)
       RETURN
 C
 C--- IFUNC= 2, Return Physical min and max for plot device. ------------

@@ -14,6 +14,15 @@ extern "C" {
 #define XmpNmaxColors "maxColors"
 #define XmpCMaxColors "MaxColors"
 
+#define XmpNpadX "padX"
+#define XmpCPadX "PadX"
+
+#define XmpNpadY "padY"
+#define XmpCPadY "PadY"
+
+#define XmpNshare "share"
+#define XmpCShare "Share"
+
 #define XMP_NORM_CURSOR  0 /* Un-augmented X cursor */
 #define XMP_LINE_CURSOR  1 /* Line cursor between ref and pointer */
 #define XMP_RECT_CURSOR  2 /* Rectangular cursor between ref and pointer */

@@ -1,8 +1,9 @@
 pgplot/sys_osf1
 
-This directory is for the OSF/1 or Digital UNIX (e.g., DEC/AXP)
-version of PGPLOT.  Version 5.0 of PGPLOT has not yet been tested on
-this system. The file f77_cc.conf for use with the makemake procedure
+This directory is for Digital UNIX (formerly known as OSF/1)
+version of PGPLOT. 
+
+The file f77_cc.conf for use with the makemake procedure
 is based on information received from Magnus Harlander
 (harlan@Physik.TU-Muenchen.DE) and Jean-Louis Oneto (OCA-CERGA,
 Grasse, France; oneto@ocar01.obs-azur.fr), but may require
@@ -10,7 +11,12 @@ modification.
 
 The file f77_cc_shared.conf includes instructions for building a
 shared library, based on information received from Robin Williams
-(rjrw@ast.man.ac.uk). I have not tested it.
+(rjrw@ast.man.ac.uk). This doesn't work for everyone, so perhaps
+it needs to be modified for different versions of Digital UNIX.
+Please let me know if you have corrections.
+
+You may need to edit these files, especially the entries MOTIF_LIBS
+and TK_LINS if you use the Motif or Tk widget drivers.
 
 64-BIT ADDRESSES
 
@@ -77,8 +83,13 @@ linked by using the C compiler to invoke ld, NOT the Fortran compiler.
 the C compiler to invoke ld, it is possible that some necessary
 Fortran libraries aren't automatically linked in.''  Some of the
 libraries needed are -lUil -lots -lm.
+
+From John R. Thorstensen:
+
+cc demo.c -L/usr/local/pgplot -lcpgplot -lpgplot -lX11 -lm -lots -lUfor -o demo
+
  
 Please send any updates or corrections to me.
 
 Tim Pearson
-2 January 1996
+22 April 1998

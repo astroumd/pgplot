@@ -1084,8 +1084,6 @@ static int xw_client_message(xw, event)
 	  xw_ret_error(xw, event, pgw);  /* Unknown message type */
 	break;
       };
-    } else {
-      xw_ret_error(xw, event, pgw);     /* Unknown client */
     };
   };
   return 0;

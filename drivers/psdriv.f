@@ -40,6 +40,12 @@ C Version 6.2  - 1996 Oct  7 - correct bounding-box error (K-G Adams);
 C                              correct error in use of GCTOI (G Gonczi);
 C                              suppress <0 0 C> commands (R Scharroo);
 C                              allow arbitrary page size.
+C Version 6.3  - 1997 Nov 14 - shorter commands for setrgbcolor and setgray.
+C Version 6.4  - 1997 Nov 19 - workaround a Ghostscript bug: split long
+C                              polylines into shorter segments.
+C Version 6.5  - 1998 Feb 23 - support for real linewidth.
+C Version 6.6  - 1998 Nov 10 - provide easy way to convert color to grey.
+C Version 6.7  - 1998 Dec 12 - added #copies to header.
 C
 C Supported device: 
 C   Any printer that accepts the PostScript page description language, 
@@ -158,10 +164,10 @@ C
       SAVE    WIDTH, HEIGHT, OFFW, OFFH
       INTEGER  IER, I0, J0, I1, J1, L, LL, LASTI, LASTJ, UNIT, LOBUF
       SAVE                                 LASTI, LASTJ, UNIT, LOBUF
-      INTEGER  CI, LW, NPTS, NPAGE, IOERR, LFNAME
-      SAVE         LW, NPTS, NPAGE, IOERR, LFNAME
-      INTEGER  STATE
-      SAVE     STATE
+      INTEGER  CI, NPTS, NPAGE, IOERR, LFNAME
+      SAVE         NPTS, NPAGE, IOERR, LFNAME
+      INTEGER  STATE, NSEG
+      SAVE     STATE, NSEG
       INTEGER  NXP, NYP, XORG, YORG, XLEN, YLEN, N, RGB(3)
       INTEGER  HIGH, LOW, I, K, KMAX, POSN, LD, LU
       INTEGER  BBOX(4), BB1, BB2, BB3, BB4
@@ -169,6 +175,8 @@ C
       INTEGER  GROPTX, GRCTOI
       LOGICAL  START, LANDSC, COLOR, STDOUT
       SAVE     START,         COLOR, STDOUT
+      REAL     LW
+      SAVE     LW
       REAL     BBXMIN, BBXMAX, BBYMIN, BBYMAX
       SAVE     BBXMIN, BBXMAX, BBYMIN, BBYMAX
       REAL     RVALUE(0:255), GVALUE(0:255), BVALUE(0:255)
@@ -394,7 +402,7 @@ C        -- machine-dependent!
       CALL GRUSER(INSTR, L)
       IF (L.GT.0) CALL GRPS02(IOERR, UNIT, '%%For: '//INSTR(1:L))
       CALL GRPS02(IOERR, UNIT, '%%Title: PGPLOT PostScript plot')
-      CALL GRPS02(IOERR, UNIT, '%%Creator: PGPLOT')
+      CALL GRPS02(IOERR, UNIT, '%%Creator: PGPLOT [PSDRIV 6.6]')
       CALL GRDATE(INSTR, L)
       IF (L.GT.0) CALL GRPS02(IOERR, UNIT,
      :    '%%CreationDate: '//INSTR(1:L))
@@ -427,8 +435,7 @@ C           actual dimensions
      1  '/C {rlineto currentpoint stroke moveto} bind def')
       CALL GRPS02(IOERR, UNIT, 
      1  '/D {moveto 0 0 rlineto currentpoint stroke moveto} bind def')
-      CALL GRPS02(IOERR, UNIT, '/SLW {5 mul setlinewidth} bind def')
-      CALL GRPS02(IOERR, UNIT, '/SCF /pop load def')
+      CALL GRPS02(IOERR, UNIT, '/LW {5 mul setlinewidth} bind def')
       CALL GRPS02(IOERR, UNIT, '/BP {newpath moveto} bind def')
       CALL GRPS02(IOERR, UNIT, '/LP /rlineto load def')
       CALL GRPS02(IOERR, UNIT, 
@@ -438,6 +445,13 @@ C           actual dimensions
       CALL GRPS02(IOERR, UNIT, '/ME /grestore load def')
       CALL GRPS02(IOERR, UNIT, '/CC {0 360 arc stroke} bind def')
       CALL GRPS02(IOERR, UNIT, '/FC {0 360 arc fill} bind def')
+      CALL GRPS02(IOERR, UNIT, '/G {1024 div setgray} bind def')
+      CALL GRPS02(IOERR, UNIT, '/K {3 -1 roll 1024 div 3 -1 roll 1024'//
+     :     ' div 3 -1 roll 1024 div setrgbcolor} bind def')
+      CALL GRPS02(IOERR, UNIT, '% Uncomment next line to convert color'
+     :     //' to grey shades')
+      CALL GRPS02(IOERR, UNIT, '%/K {3 -1 roll 3413 div 3 -1 roll 1739'
+     :     //' div 3 -1 roll 9309 div add add setgray} bind def')
       CALL GRGENV('IDENT', INSTR, L)
       IF (L.GT.0) THEN
          CALL GRPS02(IOERR, UNIT,
@@ -445,6 +459,9 @@ C           actual dimensions
      :        ' stringwidth neg exch neg exch rmoveto show} bind def')
       END IF
       CALL GRPS02(IOERR, UNIT, '%%EndProlog')
+      CALL GRPS02(IOERR, UNIT, '%%BeginSetup')
+      CALL GRPS02(IOERR, UNIT, '/#copies 1 def')
+      CALL GRPS02(IOERR, UNIT, '%%EndSetup')
       NPAGE = 0
       RETURN
 C
@@ -508,7 +525,7 @@ C
           CALL GRFAO('# # translate', L, INSTR, OFFW, OFFH, 0, 0)
       END IF
       CALL GRPS02(IOERR, UNIT, INSTR(:L))
-      CALL GRPS02(IOERR, UNIT, '1 setlinejoin 1 setlinecap 1 SLW 1 SCF')
+      CALL GRPS02(IOERR, UNIT, '1 setlinejoin 1 setlinecap 1 LW 1')
       CALL GRPS02(IOERR, UNIT, '%%EndPageSetup')
       CALL GRPS02(IOERR, UNIT, '%%PageBoundingBox: (atend)')
       DO 111 NSYM=0,31
@@ -532,10 +549,13 @@ C
 C        -- suppress zero-length continuation segment
          IF (I0.EQ.I1 .AND. J0.EQ.J1) RETURN
          CALL GRFAO('# # C', L, INSTR, (I1-I0), (J1-J0), 0, 0)
+         NSEG = NSEG+1
       ELSE
+         NSEG = 1
          CALL GRFAO('# # # # L', L, INSTR, (I1-I0), (J1-J0), I0, J0)
       END IF
       LASTI = I1
+      IF (NSEG.GT.200) LASTI = -1
       LASTJ = J1
       BBXMIN = MIN(BBXMIN, I0-LW*5.0, I1-LW*5.0)
       BBXMAX = MAX(BBXMAX, I0+LW*5.0, I1+LW*5.0)
@@ -575,13 +595,13 @@ C     -- optionally write identification
          CALL GRFAO('('//SUSER(:LU)//' '//SDATE(:LD)//
      :        ' [#]) # # 100 /Helvetica RS',
      :        L, INSTR, NPAGE, POSN, 50, 0)
-         CALL GRPS02(IOERR, UNIT, '0.0 setgray')
+         CALL GRPS02(IOERR, UNIT, '0 G')
          CALL GRPS02(IOERR, UNIT, INSTR(1:L))
       END IF
 C     -- optionally draw bounding box
       CALL GRGENV('PS_DRAW_BBOX', INSTR, L)
       IF (L.GT.0) THEN
-         CALL GRFAO('0.0 setgray 0 SLW newpath # # moveto', L, INSTR,
+         CALL GRFAO('0 G 0 LW newpath # # moveto', L, INSTR,
      :              NINT(BBXMIN), NINT(BBYMIN), 0, 0)
          CALL GRPS02(IOERR, UNIT, INSTR(1:L))
          CALL GRFAO('# # lineto # # lineto', L, INSTR,
@@ -625,12 +645,10 @@ C
   150 CONTINUE
       CI = NINT(RBUF(1))
       IF (COLOR) THEN
-          WRITE(INSTR,'(3(F5.3,1X),''setrgbcolor'')')
-     1          RVALUE(CI), GVALUE(CI), BVALUE(CI)
-          L = 29
+         CALL GRFAO('# # # K', L, INSTR, NINT(1024.*RVALUE(CI)), 
+     :        NINT(1024.*GVALUE(CI)), NINT(1024.*BVALUE(CI)), 0)
       ELSE
-          WRITE(INSTR,'(F5.3,1X,''setgray'')') RVALUE(CI)
-          L = 13
+         CALL GRFAO('# G', L, INSTR, NINT(1024.*RVALUE(CI)), 0, 0, 0)
       END IF
       LASTI = -1
       GOTO 800
@@ -713,8 +731,13 @@ C
 C--- IFUNC=22, Set line width. -----------------------------------------
 C
   220 CONTINUE
-      LW = NINT(RBUF(1))
-      CALL GRFAO('# SLW', L, INSTR, LW, 0, 0, 0)
+      LW = RBUF(1)
+      IF (INT(LW).EQ.LW) THEN
+         CALL GRFAO('# LW', L, INSTR, INT(LW), 0, 0, 0)
+      ELSE
+         WRITE (INSTR,'(F6.2,'' LW'')') LW
+         L = 9
+      END IF
       LASTI = -1
       GOTO 800
 C

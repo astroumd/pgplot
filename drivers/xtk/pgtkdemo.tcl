@@ -196,6 +196,23 @@ proc draw_image {args} {
 }
 
 #-----------------------------------------------------------------------
+# Recolor the current image.
+#-----------------------------------------------------------------------
+proc recolor_image {args} {
+    upvar #0 global.colors.menu color_menu
+#
+# Change the colors.
+#
+  pgdemo recolor_image $color_menu
+#
+# Redraw the current image if necessary.
+#
+  if [.imagearea.pgplot cget -share] {
+    draw_image
+  }
+}
+
+#-----------------------------------------------------------------------
 # Arm the image-widget cursor such that when the user next presses a
 # mouse button or key within the image window the start of a slice
 # will be selected.
@@ -330,7 +347,7 @@ proc create_image_area {w} {
 #
 # Create the PGPLOT image window.
 #
-  pgplot $w.pgplot -width 10c -height 10c -maxcolors 64 -bd 2 -bg black -fg white
+  pgplot $w.pgplot -share true -width 10c -height 10c -mincolors 25 -maxcolors 64 -bd 2 -bg black -fg white
 #
 # Create horizontal and vertical scroll-bars and have them
 # call the pgplot xview and yview scroll commands to scroll the
@@ -386,7 +403,7 @@ proc create_slice_area {w} {
 #
 # Create the PGPLOT slice window.
 #
-  pgplot $w.pgplot -width 10c -height 5c -maxcolors 16 -bd 2 -bg black -fg white
+  pgplot $w.pgplot -share true -width 10c -height 5c -maxcolors 2 -bd 2 -bg black -fg white
 #
 # Position the PGPLOT widget.
 #
@@ -432,6 +449,11 @@ option add *Button*activeBackground $alt_bg widgetDefault
 option add *Button*activeForeground black widgetDefault
 option add *Menubutton*activeForeground black widgetDefault
 
+# If the user uses a window-manager function to kill the demo
+# arrange for the demo to exit quietly.
+
+wm protocol . WM_DELETE_WINDOW {exit}
+
 # Create the menu-bar.
 
 create_main_menubar .menubar
@@ -449,6 +471,13 @@ create_image_area .imagearea
 #
 create_option_menu .function "Select a display function:" draw_image {
 	"cos(R)sin(A)" "sinc(R)" "exp(-R^2/20.0)" "sin(A)" "cos(R)" "(1+sin(6A))exp(-R^2/100)"
+}
+
+#
+# Create the colormap-selection option menu.
+#
+create_option_menu .colors "Select a color table:" recolor_image {
+ grey rainbow heat aips
 }
 
 # Create a PGPLOT window with scroll bars, and enclose them in a frame.
@@ -475,11 +504,12 @@ pack .menubar -side top -fill x
 pack .world -side top -anchor w
 pack .imagearea -side top -fill both -expand true
 pack .function -side top -fill x
+pack .colors -side top -fill x
 pack .slicearea -side top -fill both -expand true
 
 # Create the pgdemo command.
 
-create_pgdemo pgdemo .imagearea.pgplot/xtk .slicearea.pgplot/xtk
+create_pgdemo pgdemo [.imagearea.pgplot device] [.slicearea.pgplot device]
 
 # Windows in Tk do not take on their final sizes until the whole
 # application has been mapped. This makes it impossible for the

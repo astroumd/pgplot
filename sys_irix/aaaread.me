@@ -1,18 +1,49 @@
 These are a few helpful hints for compiling PGPLOT on Silicon Graphics
 machines running the Irix operating system.
 
-IRIX 6.2
---------
+IRIX prior to 6.2
+-----------------
 
-In IRIX 6.2, the library names have changed. Edit the .conf file in this
-directory and change
-   LIBS="-lX11_s"
-to
+If you are using an earlier version of IRIX than 6.2, edit the .conf
+file in this directory and change
    LIBS="-lX11"
+to
+   LIBS="-lX11_s"
 
-There are various compilation modes for Irix, e.g., -32, -n32,
--64. The configuration files provided use the default; if you change
-this, make sure you compile everything in the same mode.
+Compilation Options
+-------------------
+
+The SG Fortran and C compilers have a variety of compilation modes,
+e.g., -32, -n32, -64. The configuration files provided use the
+default; if you change this, make sure you compile everything in the
+same mode. The appropriate options may depend on how your system is
+set up or how you plan to use the library. For example, one user
+reported that he needed "-mips4" in Fortran and "-n32" in C. To change
+the options, eirther edit the makefile, or (better), edit the
+configuration file in this directory (e.g.,
+pgplot/sys_linux/f77_cc.conf) before running makemake, following the
+comments in the file.
+
+SGI manuals are available online at http://techpubs.sgi.com/library/
+
+
+
+PGNUMB
+------
+
+A user has reported that PGNUMB does not generate correct code for
+numbers in exponential format. This affects axes drawn with PGBOX
+etc. when labels require a multiplying power of 10. This appears to be
+a due to a bug in the SGI Fortran compiler. It can apparently be fixed
+by specifying -backslash when compiling the pgplot library. Edit the
+.conf file and change
+
+FFLAGC="-u -O2"
+ 
+to
+ 
+FFLAGC="-u -O2 -backslash"
+
 
 
 PGPLOT driver for SGI GL library: not recommended
@@ -71,4 +102,4 @@ that should be fixed.  Please report the problem.
 
 ________________________________________________________________________
 
-TJP 10-Mar-1997
+TJP 23-Nov-1998

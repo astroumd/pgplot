@@ -3,6 +3,9 @@ pgplot/sys_hp
 The *.conf files in this directory are for use with HP-UX (e.g.,
 HP9000 series machines).
 
+Note that you need to use the "fort77" interface to the HP-UX Fortran
+77 compiler, not "f77". "fort77" provides a POSIX-compliant interface.
+
 Some versions of the HP Fortran compiler have problems compiling
 PGPLOT when optimization is enabled. The problem usually occurs while
 trying to compile gritoc:

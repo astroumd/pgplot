@@ -8,6 +8,8 @@
 ! BCDRIV 0 /BCANON    Canon Laser printer (bitmap version), landscape
 ! CADRIV 0 /CANON     Canon Laser printer, LBP-8/A2, landscape
 ! CCDRIV 0 /CCP       DEC LJ250 Color Companion printer
+! CGDRIV 1 /CGM       CGM metafile, indexed colour selection            C
+! CGDRIV 2 /CGMD      CGM metafile, direct colour selection             C
 ! CWDRIV 0 /CW6320    Gould/Bryans Colourwriter 6320 pen plotter	Std F77
 ! EPDRIV 0 /EPSON     Epson FX100 dot matrix printer
 ! EXDRIV 1 /EXCL      Talaris/EXCL printers, landscape
@@ -25,7 +27,7 @@
 ! HJDRIV 0 /HJ        Hewlett-Packard Desk/Laserjet printer
 ! HPDRIV 0 /HP7221    Hewlett-Packard HP7221 pen plotter		Std F77
 ! LADRIV 0 /LA50      Dec LA50 and other sixel printers
-! LJDRIV 0 /LJ        Hewlett-Packard LaserJet printers
+! LJDRIV 0 /LJ        Hewlett-Packard LaserJet printers                 VMS
 ! LSDRIV 1 /LIPS2     Canon LaserShot printer (landscape)
 ! LSDRIV 2 /VLIPS2    Canon LaserShot printer (portrait)
 ! LNDRIV 0 /LN03      Dec LN03-PLUS Laser printer (landscape)           VMS
@@ -35,6 +37,8 @@
 ! NEDRIV 0 /NEXT      Computers running NeXTstep operating system
   NUDRIV 0 /NULL      Null device (no output)				Std F77
 ! PGDRIV 0 /PGMF      PGPLOT metafile (new format, experimental)        Std F77
+! PNDRIV 1 /PNG       Portable Network Graphics file                    C
+! PNDRIV 2 /TPNG      Portable Network Graphics file - transparent background C
 ! PPDRIV 1 /PPM       Portable Pixel Map file, landscape
 ! PPDRIV 2 /VPPM      Portable PIxel Map file, portrait
 ! PSDRIV 1 /PS        PostScript printers, monochrome, landscape	Std F77
@@ -55,6 +59,7 @@
 ! TTDRIV 7 /V603      Visual 603 terminal				Std F77
 ! TTDRIV 8 /KRM3      Kermit 3 on IBM-PC				Std F77
 ! TTDRIV 9 /TK4100    Tektronix 4100-series terminals			Std F77
+! TTDRIV 10 /VMAC     Macintosh VersaTerm-PRO Tektronix-4105 emulator	Std F77
 ! TXDRIV 0 /TX        TeX PK Font Output files
 ! VADRIV 0 /VCANON    Canon Laser printer, LBP-8/A2, portrait
 ! VBDRIV 0 /VBCANON   Canon Laser printer (bitmap version), portrait
@@ -87,6 +92,14 @@
 ! applications have to be linked with Motif libraries.
 !
 ! XMDRIV 0 /XMOTIF    Motif applications containing XmPgplot widgets.   C
+!
+! Selection of the XATHENA driver causes a stub driver to be placed in
+! the main PGPLOT library. The real driver is placed in libXawPgplot.a.
+! Applications that need the Athena driver should link with libXawPgplot.a
+! before the PGPLOT library. This treatment means that only Athena
+! applications have to be linked with Xaw libraries.
+!
+! XADRIV 0 /XATHENA    Motif applications containing XaPgplot widgets.   C
 !
 ! Selection of the TK driver causes a stub driver to be placed in
 ! the main PGPLOT library. The real driver is placed in libtkpgplot.a.

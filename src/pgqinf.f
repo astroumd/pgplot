@@ -72,7 +72,7 @@ C
           CALL GRDATE(VALUE, LENGTH)
           IER = 1
       ELSE IF (TEST.EQ.'VERSION') THEN
-          VALUE = 'v5.2.0'
+          VALUE = 'v5.2.2'
           LENGTH = 6
           IER = 1
       ELSE IF (TEST.EQ.'STATE') THEN

@@ -25,26 +25,6 @@ C---
       GROTER=ICHAN
       RETURN
       END
-      SUBROUTINE GRPTER(ICHAN, PROMPT, LPROM, CBUF, LBUF)
-      CHARACTER PROMPT*(*), CBUF*(*)
-      INTEGER   ICHAN, LPROM, LBUF
-C---
-C revised 3-Jun-1997: use NOFILTR to pass DEL etc.
-C---
-      INCLUDE '($IODEF)'
-      INTEGER   IREAD
-      PARAMETER (IREAD= IO$M_PURGE + IO$M_NOFORMAT + IO$M_NOFILTR +
-     :           IO$M_NOECHO + IO$M_TIMED + IO$_READPROMPT)
-      INTEGER   ITIME
-      PARAMETER (ITIME=60)
-      INTEGER IQUAD0(2)
-      DATA IQUAD0/0,0/
-C---
-      CALL SYS$QIOW(,%val(ICHAN),%val(IREAD),,,,
-     :     %ref(CBUF),%val(LBUF),%val(ITIME),IQUAD0,
-     :     %ref(PROMPT),%val(LPROM))
-      RETURN
-      END
 C*********
       SUBROUTINE GRWTER(ICHAN, CBUF, LBUF)
       CHARACTER CBUF*(*)
@@ -63,6 +43,41 @@ C---
      :   %val(IO$_WRITEVBLK.OR.IO$M_NOFORMAT),,,,
      :      %ref(CBUF),%val(LBUF),,,,)
       LBUF=0
+      RETURN
+      END
+C*********
+      SUBROUTINE GRPTER(ICHAN, PROMPT, LPROM, CBUF, LBUF)
+      CHARACTER PROMPT*(*), CBUF*(*)
+      INTEGER   ICHAN, LPROM, LBUF
+C---
+C revised 3-Jun-1997: use NOFILTR to pass DEL etc.
+C 12-Mar-1998: change timeout behavior (M.Zolliker)
+C---
+      INCLUDE '($SSDEF)'
+      INCLUDE '($IODEF)'
+      INTEGER   IREAD1,IREAD
+      PARAMETER (IREAD1= IO$M_PURGE + IO$M_NOFORMAT + IO$M_NOFILTR +
+     :           IO$M_NOECHO + IO$_READPROMPT)
+      PARAMETER (IREAD= IO$M_NOFORMAT + IO$M_NOFILTR +
+     :           IO$M_NOECHO + IO$M_TIMED + IO$_TTYREADALL)
+      INTEGER   ITIME
+      PARAMETER (ITIME=5)
+C IOSB(1): status
+C IOSB(2): character count
+      INTEGER*2 IOSB(4)
+C---
+C wait indefinitely for the first character
+      CALL SYS$QIOW(,%VAL(ICHAN),%VAL(IREAD1),IOSB,,,
+     :     %REF(CBUF),%VAL(1),,,
+     :     %REF(PROMPT),%VAL(LPROM))
+      IF (IOSB(1) .EQ. SS$_NORMAL) THEN
+C wait 4-5 sec. for each of the following characters
+        CALL SYS$QIOW(,%VAL(ICHAN),%VAL(IREAD),IOSB,,,
+     :     %REF(CBUF(2:)),%VAL(LBUF-1),%VAL(ITIME),,
+     :     %REF(PROMPT),%VAL(LPROM))
+        IOSB(2)=IOSB(2)+1
+      ENDIF
+      LBUF=IOSB(2)
       RETURN
       END
 C*********

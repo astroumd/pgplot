@@ -33,7 +33,7 @@ C
 C Obtaining hardcopy: Use the command PRINT/PASSALL.
 C-----------------------------------------------------------------------
       CHARACTER*(*) TYPE, DEFNAM
-      PARAMETER (TYPE='TOSHIBA')
+      PARAMETER (TYPE='TOSHIBA (Toshiba P351 "3-in-one" printer)')
       PARAMETER (DEFNAM='PGPLOT.TOPLOT')
       BYTE FF
       PARAMETER (FF=12)

@@ -1,18 +1,18 @@
 C* W9DRIV -- PGPLOT device driver for Windows95 (or WindowsNT)
 C+
       SUBROUTINE W9DRIV (IFUNC, RBUF, NBUF, CHR, LCHR, MODE)
-      USE       MSFLIB
+      USE       DFLIB
       IMPLICIT  NONE
       INTEGER   IFUNC, NBUF, LCHR, MODE
       REAL      RBUF(*)
       CHARACTER CHR*(*)
 C
-C PGPLOT driver for IBM PC's and clones running Microsoft PowerStation
-C Fortran (4.0 or higher).  This driver will create a graphics window.
+C PGPLOT driver for IBM PC's and clones running DIGITAL Visual Fortran
+C (5.0 or higher).  This driver will create a graphics window.
 C PGEND will return control to the default (text) window, but the graphics
 C window is not erased until <RETURN> is pressed.
 C
-C This routine must be compiled and linked with the Microsoft MSFLIB graphics
+C This routine must be compiled and linked with the Digital DFLIB graphics
 C library.  Application must be compiled as a "QuickWin Graphics" project type,
 C compiler command line option /MW.
 C 
@@ -25,9 +25,12 @@ C               resolution modes; interrupt driven mouse (cursor band modes);
 C               rectangle fill; pixel lines [Phil Seeger, PASeeger@aol.com]
 C 1996-Apr-30 - multiple devices; return color representation [PAS]
 C 1996-May-03 - each window has its own resolution and palette [PAS]
+C 1997-Dec-15 - change USE statement from Microsoft to Digital [PAS]
+C 1998-May-04 - had only 7 windows instead of 8 [PAS]
+C 1998-Jun-22 - moved window initialization to be after open [ACLarson]
 C-----------------------------------------------------------------------
 C
-C Supported device: IBM PC's and compatibles with Windows95;
+C Supported device: IBM PC's and compatibles with Windows95/NT;
 C                   requires VGA or higher graphics adapter
 C
 C Device type code: /W95  (also /WV, /WS, /WX, or /WZ)
@@ -74,7 +77,7 @@ C  no current picture, or 2 if it is open with a current picture.
 C-----------------------------------------------------------------------
       EXTERNAL  GRW900, GRW901
       INTEGER   MAXDEV
-	REAL*4    CNORM
+      REAL*4    CNORM
       PARAMETER (MAXDEV=8, CNORM=255.)
       TYPE (xycoord) XY
 C
@@ -83,7 +86,7 @@ C
      &          I, ACTIVE,IUNIT(MAXDEV), STATE(0:MAXDEV), NPIC(MAXDEV)
       INTEGER*4 IRGB, RGB(0:235,MAXDEV), RGB16(0:15), RGB236(0:235)
       INTEGER*2 I2STAT, I2X0, I2Y0, I2X1, I2Y1, DASHLINE(5), ICOLOR,    &
-	&          CBITS(MAXDEV), IX(1), IY(1), IC(1)
+     &          CBITS(MAXDEV), IX(1), IY(1), IC(1)
       INTEGER*4 I4STAT, I4X, I4Y, IXREF, IYREF, BAND, EVENT, IBUF
       LOGICAL   FIRST, QFIRST(MAXDEV), LPOS
       SAVE FIRST, QFIRST, ACTIVE, STATE, XY, MXX, MXY, MXC, IUNIT, RGB, &
@@ -103,22 +106,22 @@ C---
 C     Initialize first 16 RGB values and gray scale for all windows
       IF (FIRST) THEN
          FIRST = .FALSE.
-	   DO ICOLOR=0,15
-	      DO I=1,MAXDEV
-	         RGB(ICOLOR,I) = RGB16(ICOLOR)
-	      END DO
-	   END DO
-	   IRGB = #020202
-         DO ICOLOR=16,235
-	      IRGB = IRGB + #010101
-	      DO I=1,MAXDEV
-	         RGB(ICOLOR,I) = IRGB
-	      END DO
+         DO ICOLOR=0,15
+            DO I=1,MAXDEV
+               RGB(ICOLOR,I) = RGB16(ICOLOR)
+            END DO
          END DO
-	   ICOLOR = 1
-	   DO I=1,MAXDEV
-	      CBITS(I) = #0F
-	   END DO
+         IRGB = #020202
+         DO ICOLOR=16,235
+            IRGB = IRGB + #010101
+            DO I=1,MAXDEV
+               RGB(ICOLOR,I) = IRGB
+            END DO
+         END DO
+         ICOLOR = 1
+         DO I=1,MAXDEV
+            CBITS(I) = #0F
+         END DO
       END IF
 C
       SELECT CASE (IFUNC)
@@ -127,15 +130,15 @@ C
 C--- IFUNC = 1, Return device name.-------------------------------------
          SELECT CASE (MODE)
          CASE (1)
-            CHR = 'WV    (Windows95, 640x480)'
+            CHR = 'WV    (Windows95/NT, 640x480)'
          CASE (2)
-            CHR = 'WS    (Windows95, 800x600)'
+            CHR = 'WS    (Windows95/NT, 800x600)'
          CASE (3)
-            CHR = 'WX    (Windows95, 1024x768)'
+            CHR = 'WX    (Windows95/NT, 1024x768)'
          CASE (4)
-            CHR = 'WZ    (Windows95, 1280x1024)'
+            CHR = 'WZ    (Windows95/NT, 1280x1024)'
          CASE DEFAULT
-            CHR = 'W9    (Windows95, mode from environment)' 
+            CHR = 'W9    (Windows95/NT, mode from environment)' 
          END SELECT
          LCHR = LEN_TRIM(CHR)
 C
@@ -181,7 +184,7 @@ C    representation, No markers)
 C
       CASE (5)
 C--- IFUNC = 5, Return default file name. ------------------------------
-         CHR = 'PGPLOT Graphics Window'
+         CHR = 'PGPlot Graphics'
          LCHR = LEN_TRIM(CHR)
 C
       CASE (6)
@@ -211,12 +214,12 @@ C--- IFUNC = 8, Select plot. -------------------------------------------
                ACTIVE = I
                I4STAT = SETACTIVEQQ(IUNIT(ACTIVE))
                I4STAT = FOCUSQQ(IUNIT(ACTIVE))
-	         DO I=0,235
-	            RGB236(I) = RGB(I,ACTIVE)
-	         END DO
-	         I4STAT = REMAPALLPALETTE(RGB236)
-	         I2STAT = SETCOLOR(ICOLOR)
-	      END IF
+               DO I=0,235
+                  RGB236(I) = RGB(I,ACTIVE)
+               END DO
+               I4STAT = REMAPALLPALETTE(RGB236)
+               I2STAT = SETCOLOR(ICOLOR)
+            END IF
          ELSE
             CALL GRWARN('invalid or unopened graphics window in W9DRIV')
          END IF
@@ -227,26 +230,26 @@ C--- IFUNC = 9, Open workstation. --------------------------------------
          DO WHILE (I.LE.MAXDEV .AND. STATE(I).NE.0)
             I = I + 1
          END DO
-         IF (I .GE. MAXDEV) THEN
+         IF (I .GT. MAXDEV) THEN
             CALL GRWARN('maximum number of graphics windows exceeded')
             RBUF(1) = 0.
             RBUF(2) = 0.
          ELSE
-	      ACTIVE = I
+            ACTIVE = I
             RBUF(1) = ACTIVE
             RBUF(2) = 1.
 C           Initialize this window in requested mode, and open it
             MXX(ACTIVE) = MX(MODE)
             MXY(ACTIVE) = MY(MODE)
             MXC(ACTIVE) = 236
-            CALL GRW900(ACTIVE, MXX, MXY, MXC, QFIRST)
             CALL GRGLUN(IUNIT(ACTIVE))
             WRITE (WINTITLE, '(A,I2)') CHR(:LCHR)//', #', ACTIVE
             OPEN (IUNIT(ACTIVE), FILE='USER', TITLE=WINTITLE(:LCHR+5))
-	      DO I=0,235
-	         RGB236(I) = RGB(I,ACTIVE)
-	      END DO
-	      I4STAT = REMAPALLPALETTE(RGB236)
+            CALL GRW900(ACTIVE, MXX, MXY, MXC, QFIRST)
+            DO I=0,235
+               RGB236(I) = RGB(I,ACTIVE)
+            END DO
+            I4STAT = REMAPALLPALETTE(RGB236)
             I2STAT = SETCOLOR(ICOLOR)
             STATE(ACTIVE) = 1
             NPIC(ACTIVE)  = 0
@@ -261,7 +264,7 @@ C--- IFUNC=10, Close workstation. --------------------------------------
             read * 
             CLOSE (IUNIT(ACTIVE))
             STATE(ACTIVE)  = 0
-	      QFIRST(ACTIVE) = .TRUE.
+            QFIRST(ACTIVE) = .TRUE.
          END IF
 C
       CASE (11)
@@ -359,12 +362,12 @@ C
 C--- IFUNC=21, Set color representation. -------------------------------
          I = NINT(RBUF(1))
          IF (I.GE.0 .AND. I.LE.MXC(ACTIVE)) THEN
-	      ICOLOR = I
+            ICOLOR = I
             IRGB =    NINT(RBUF(2)*CNORM)     .OR.                      &
-	&          ISHFT(NINT(RBUF(3)*CNORM), 8) .OR.                      &
-	&          ISHFT(NINT(RBUF(4)*CNORM),16)
-	      RGB(I,ACTIVE) = IRGB
-	      CBITS(ACTIVE) = CBITS(ACTIVE) .OR. ICOLOR
+     &          ISHFT(NINT(RBUF(3)*CNORM), 8) .OR.                      &
+     &          ISHFT(NINT(RBUF(4)*CNORM),16)
+            RGB(I,ACTIVE) = IRGB
+            CBITS(ACTIVE) = CBITS(ACTIVE) .OR. ICOLOR
             I4STAT = REMAPPALETTERGB(I, IRGB)
          END IF
 C
@@ -407,7 +410,7 @@ C
       CASE (29)
 C--- IFUNC=29, Query color representation.------------------------------
          I       = NINT(RBUF(1))
-	   IRGB    = RGB(I,ACTIVE)
+         IRGB    = RGB(I,ACTIVE)
          RBUF(2) = FLOAT(IAND(IRGB, #FF))/CNORM
          RBUF(3) = FLOAT(IAND(ISHFT(IRGB,-8), #FF))/CNORM
          RBUF(4) = FLOAT(IAND(ISHFT(IRGB,-16), #FF))/CNORM
@@ -424,7 +427,9 @@ C--- Unimplemented Function
       END
 C*********
       SUBROUTINE GRW900(I, MXX, MXY, MXC, QFIRST)
-      USE       MSFLIB
+      USE       DFLIB
+C  1998-May-04 - change from MSFLIB to DFLIB 
+C  1998-Jun-22 - don't set WC.title to 'PGPLOT'
       IMPLICIT  NONE
       INTEGER   I, MXX(*), MXY(*), MXC(*)
       LOGICAL   QFIRST(*)
@@ -463,7 +468,6 @@ C
       WC.numtextcols = -1
       WC.numtextrows = -1
       WC.fontsize    = -1
-      WC.title       = 'PGPLOT'C
       STATUS = SETWINDOWCONFIG(WC)
       IF(.NOT.STATUS) STATUS = SETWINDOWCONFIG(WC)
 C
@@ -475,7 +479,7 @@ C
       END
 C*********
       RECURSIVE SUBROUTINE GRW901(IUNIT,EVENT,KEYSTATE,XMOUSE,YMOUSE)
-      USE      MSFLIB
+      USE      DFLIB
       IMPLICIT NONE
       INTEGER  IUNIT, EVENT, KEYSTATE, XMOUSE, YMOUSE
 C
@@ -483,6 +487,7 @@ C  Callback routine for mouse events, specific to Windows95
 C       Note: cursor band modes implemented in software
 C
 C  1996-Apr-26 - P.A.Seeger
+C  1998-May-04 - change from MSFLIB to DFLIB 
 C--
       RECORD /xycoord/ XY
       INTEGER*2 BAND, LENGTH, IX0, IY0, IX1, IY1, IX2, IY2, IXR, IYR

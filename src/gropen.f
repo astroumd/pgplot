@@ -41,6 +41,7 @@ C  1-Sep-1994 - store device capabilities in common for later use [TJP].
 C 17-Apr-1995 - zero-length string fix [TJP].
 C  6-Jun-1995 - explicitly initialize GRSTAT [TJP].
 C 29-Apr-1996 - moved initialization into GRINIT [TJP].
+C 12-Jul-1999 - fix bug [TJP].
 C-----------------------------------------------------------------------
       INCLUDE 'grpckg1.inc'
       INTEGER   IER, FTYPE, NBUF, LCHR
@@ -80,7 +81,6 @@ C
       IF (FTYPE.EQ.0) FTYPE = TYPE
       IF (1.LE.FTYPE) THEN
           GRTYPE(IDENT) = FTYPE
-          GRGTYP = FTYPE
       ELSE
           CHR = 'Device type omitted or invalid: '
           CHR(33:) = FILE
@@ -92,7 +92,7 @@ C
 C Install the file name, or assign default.
 C
       IF (FFILE.EQ.' ') THEN
-          CALL GREXEC(GRGTYP, 5,RBUF,NBUF,FFILE,LCHR)
+          CALL GREXEC(GRTYPE(IDENT), 5,RBUF,NBUF,FFILE,LCHR)
       END IF
       GRFILE(IDENT) = FFILE
       GRFNLN(IDENT) = MAX(1,GRTRIM(GRFILE(IDENT)))
@@ -103,9 +103,13 @@ C
       IF (APPEND) RBUF(3)=1
       NBUF=3
       CALL GREXEC(GRGTYP, 9,RBUF,NBUF, GRFILE(IDENT),GRFNLN(IDENT))
-      GRUNIT(IDENT)=RBUF(1)
       GROPEN=RBUF(2)
-      IF (GROPEN.NE.1) RETURN
+      IF (GROPEN.NE.1) THEN
+         IDENT = 0
+         RETURN
+      END IF
+      GRGTYP = GRTYPE(IDENT)
+      GRUNIT(IDENT)=RBUF(1)
       GRPLTD(IDENT) = .FALSE.
       GRSTAT(IDENT) = 1
       CALL GRSLCT(IDENT)
@@ -162,3 +166,5 @@ C
       GROPEN = 1
 C
       END
+
+

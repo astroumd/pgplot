@@ -56,15 +56,17 @@ typedef struct dsc$descriptor_s VMS_string;
 #include "XmPgplotP.h"
 
 /*
- * Set the default size of the widget.
+ * Define the default attributes of the widget.
  */
-#define XMP_MIN_WIDTH 64            /* Minimum width (pixels) */
-#define XMP_MIN_HEIGHT 64           /* Minimum height (pixels) */
-#define XMP_DEF_WIDTH 256           /* Default width (pixels) */
-#define XMP_DEF_HEIGHT 256          /* Default height (pixels) */
-#define XMP_MIN_COLORS 2            /* Min number of colors per colormap */
-#define XMP_DEF_COLORS 100          /* Default number of colors to try for */
-#define XMP_MAX_COLORS 255          /* Max number of colors per colormap */
+#define XMP_MIN_WIDTH 64     /* Minimum width (pixels) */
+#define XMP_MIN_HEIGHT 64    /* Minimum height (pixels) */
+#define XMP_DEF_WIDTH 256    /* Default width (pixels) */
+#define XMP_DEF_HEIGHT 256   /* Default height (pixels) */
+#define XMP_MIN_COLORS 2     /* Min number of colors per colormap */
+#define XMP_DEF_COLORS 100   /* Default number of colors to try for */
+#define XMP_MAX_COLORS 255   /* Max number of colors per colormap */
+#define XMP_DEF_MARGIN 20    /* The number of pixels to assign to the margin */
+#define XMP_DEF_SHARE 0      /* Default to allocating shared colors */
 
 /*
  * Specify the name to prefix errors with.
@@ -142,6 +144,33 @@ static XtResource resources[] = {
     sizeof(Pixel),
     XtOffsetOf(XmPgplotRec, primitive.foreground),
     XmRCallProc, (XtPointer) xmp_GetDefaultForegroundColor
+  },
+  {
+    XmpNpadX,
+    XmpCPadX,
+    XtRDimension,
+    sizeof(Dimension),
+    XtOffsetOf(XmPgplotRec, pgplot.pad_x),
+    XtRImmediate,
+    (XtPointer) XMP_DEF_MARGIN
+  },
+  {
+    XmpNpadY,
+    XmpCPadY,
+    XtRDimension,
+    sizeof(Dimension),
+    XtOffsetOf(XmPgplotRec, pgplot.pad_y),
+    XtRImmediate,
+    (XtPointer) XMP_DEF_MARGIN
+  },
+  {
+    XmpNshare,
+    XmpCShare,
+    XtRBoolean,
+    sizeof(Boolean),
+    XtOffsetOf(XmPgplotRec, pgplot.share),
+    XtRImmediate,
+    (XtPointer) XMP_DEF_SHARE
   },
 };
 
@@ -435,12 +464,16 @@ static void xmp_Realize(Widget widget, XtValueMask *mask,
 /*
  * Get a visual and colormap for the window if necessary.
  */
-  if(!pgx->color && xmp_new_visual(w)) {
-    fprintf(stderr,
+  if(!pgx->color) {
+    if(!xmp->share && xmp_new_visual(w))  /* If requested try private first */
+      xmp->share = 1;
+    if(xmp->share && xmp_new_visual(w)) { /* Try for shared colors */
+      fprintf(stderr,
       "%s: There are insufficient colors, so black and white will be used.\n",
        XMP_IDENT);
-    if(!pgx_bw_visual(pgx))
-      xmp_abort(xmp, "No colors.\n");
+      if(!pgx_bw_visual(pgx))
+	xmp_abort(xmp, "No colors.\n");
+    };
   };
 /*
  * Keep the resource-value record of the chosen visual and colormap
@@ -620,12 +653,14 @@ static Boolean xmp_SetValues(Widget old_widget, Widget req_widget,
  */
   if(new_xmp->min_colors != old_xmp->min_colors ||
      new_xmp->max_colors != old_xmp->max_colors ||
+     new_xmp->share != old_xmp->share ||
      new_w->core.colormap != old_w->core.colormap ||
      new_xmp->visual != old_xmp->visual) {
     if(XtIsRealized(new_widget))
       XtWarning("XtSetValues (XmPgplot): Too late to change color settings.\n");
     new_xmp->min_colors = old_xmp->min_colors;
     new_xmp->max_colors = old_xmp->max_colors;
+    new_xmp->share = old_xmp->share;
     new_w->core.colormap = old_w->core.colormap;
     new_xmp->visual = old_xmp->visual;
   };
@@ -660,6 +695,11 @@ static Boolean xmp_SetValues(Widget old_widget, Widget req_widget,
 		  NULL);
     pgx_set_foreground(new_xmp->pgx, fg);
   };
+/*
+ * Change the margins?
+ */
+  if(new_xmp->pad_x != old_xmp->pad_x || new_xmp->pad_y != old_xmp->pad_y)
+    pgx_set_margin(new_xmp->pgx, new_xmp->pad_x, new_xmp->pad_y);
   return redisplay_needed;
 }
 
@@ -775,6 +815,10 @@ static XmPgplotWidget xmp_open_widget(char *name)
  */
   pgx_set_background(w->pgplot.pgx, &w->pgplot.bg);
   pgx_set_foreground(w->pgplot.pgx, &w->pgplot.fg);
+/*
+ * Allow for margins.
+ */
+  pgx_set_margin(w->pgplot.pgx, w->pgplot.pad_x, w->pgplot.pad_y);
 /*
  * Reset its scroll-bars.
  */
@@ -1104,15 +1148,9 @@ void XMDRIV(ifunc, rbuf, nbuf, chr, lchr, len)
 /*--- IFUNC=3, Return device resolution ---------------------------------*/
 
   case 3:
-    {
-      int xpix_per_inch;
-      int ypix_per_inch;
-      pgx_get_resolution(pgx, &xpix_per_inch, &ypix_per_inch);
-      rbuf[0] = xpix_per_inch;
-      rbuf[1] = ypix_per_inch;
-      rbuf[2] = 1.0;		/* Device coordinates per pixel */
-      *nbuf = 3;
-    };
+    pgx_get_resolution(pgx, &rbuf[0], &rbuf[1]);
+    rbuf[2] = 1.0;		/* Device coordinates per pixel */
+    *nbuf = 3;
     break;
 
 /*--- IFUNC=4, Return misc device info ----------------------------------*/
@@ -1278,7 +1316,7 @@ void XMDRIV(ifunc, rbuf, nbuf, chr, lchr, len)
 /*--- IFUNC=22, Set line width. -----------------------------------------*/
 
   case 22:
-    pgx_set_lw(pgx, (int)(rbuf[0] + 0.5));
+    pgx_set_lw(pgx, rbuf[0]);
     break;
 
 /*--- IFUNC=23, Escape --------------------------------------------------*/
@@ -1699,7 +1737,7 @@ static int xmp_new_visual(XmPgplotWidget w)
  * Locate the visual and colormap of the parent and allocate colors from them.
  */
     if(!pgx_window_visual(pgx, XtWindow(parent), xmp->min_colors,
-			  xmp->max_colors))
+			  xmp->max_colors, xmp->share))
       return 1;
   }
 /*
@@ -1707,9 +1745,14 @@ static int xmp_new_visual(XmPgplotWidget w)
  */
   else {
     if(!pgx_adopt_visual(pgx, XVisualIDFromVisual(xmp->visual),
-			 w->core.colormap, xmp->min_colors, xmp->max_colors))
+			 w->core.colormap, xmp->min_colors, xmp->max_colors,
+			 xmp->share))
       return 1;
   };
+/*
+ * Record what kind of colors were actually allocated.
+ */
+  xmp->share = xmp->pgx->color->readonly;
   return 0;
 }
 

@@ -15,15 +15,16 @@
 #include "pgxwin.h"
 
 #define PGX_IDENT "pgxwin"
-#define PGX_IMAGE_LEN 1280     /* Length of the line-of-pixels buffer */
-#define PGX_COLORMULT 65535    /* Normalized color intensity multiplier */
-#define PGX_NCOLORS 16         /* Number of pre-defined PGPLOT colors */
+#define PGX_IMAGE_LEN 1280  /* Length of the line-of-pixels buffer */
+#define PGX_COLORMULT 65535 /* Normalized color intensity multiplier */
+#define PGX_NCOLORS 16      /* Number of pre-defined PGPLOT colors */
+#define PGX_QUERY_MAX 512   /* Max colormap query size in pgx_readonly_colors() */
 
 /* A container used to record the geometry of the Pixmap */
 
 typedef struct {
-  int xpix_per_inch;   /* Number of pixels per inch along X */
-  int ypix_per_inch;   /* Number of pixels per inch along Y */
+  float xpix_per_inch; /* Number of pixels per inch along X */
+  float ypix_per_inch; /* Number of pixels per inch along Y */
   unsigned int width;  /* Width of window (pixels) */
   unsigned int height; /* Height of window (pixels) */
   int xmargin;         /* X-axis 1/4" margin in pixels */
@@ -86,8 +87,6 @@ typedef struct {
  * draw a line of pixels.
  */
 typedef struct {
-  int npix;            /* The max number of pixels in buff[] */
-  unsigned char *buff; /* The image buffer registered to xi[] */
   XImage *xi;          /* Line of pixels Xlib image object */
 } XWimage;
 
@@ -117,8 +116,10 @@ struct PgxState {
 
 static int pgx_error_handler ARGS((Display *display, XErrorEvent *event));
 static PgxColor *pgx_find_visual ARGS((PgxWin *pgx, int class, int min_col, \
-				 int max_col));
+				 int max_col, int readonly));
 static int pgx_get_colorcells ARGS((PgxWin *pgx, PgxColor *color, \
+			      int min_col, int max_col));
+static int pgx_get_mutable_colorcells ARGS((PgxWin *pgx, PgxColor *color, \
 			      int min_col, int max_col));
 
 static XVisualInfo *pgx_visual_info ARGS((Display *display, int screen, \
@@ -138,13 +139,20 @@ static void pgx_window_to_pixmap ARGS((PgxWin *pgx, XPoint *w_coord, \
 				    XPoint *p_coord));
 static void pgx_pixmap_to_window ARGS((PgxWin *pgx, XPoint *p_coord, \
 				    XPoint *w_coord));
-static int pgx_copy_area ARGS((PgxWin *pgx, int px, int py, unsigned w,
+static int pgx_copy_area ARGS((PgxWin *pgx, int px, int py, unsigned w, \
 			       unsigned h, int wx, int wy));
-static int pgx_clear_area(PgxWin *pgx, int x, int y, unsigned w, unsigned h);
-PgxColor *new_PgxColor ARGS((PgxWin *pgx, int max_col));
+static int pgx_clear_area ARGS((PgxWin *pgx, int x, int y, unsigned w,
+				unsigned h));
+PgxColor *new_PgxColor ARGS((PgxWin *pgx, int max_col, int readonly, \
+			     VisualID vid));
 static PgxColor *del_PgxColor ARGS((PgxWin *pgx, PgxColor *color));
 static int pgx_default_class ARGS((PgxWin *pgx));
 static int pgx_nint ARGS((float f));
+
+static int pgx_readonly_colors ARGS((PgxWin *pgx, int ncol, XColor *colors, \
+				     unsigned long *pixels));
+static int pgx_cmp_xcolor ARGS((const void *va, const void *vb));
+static int pgx_nearest_color ARGS((XColor *colors, int ncol, XColor *c));
 
 /*
  * pgx_ready() accepts a state bitmask that contains a union of the
@@ -153,7 +161,7 @@ static int pgx_nint ARGS((float f));
 #define PGX_NEED_COLOR  1  /* Colormap allocated */
 #define PGX_NEED_WINDOW 2  /* Window created */
 #define PGX_NEED_PIXMAP 4  /* A valid pixmap exists */
-#define PGX_NEED_PGOPEN 8  /* Open to PGPLOT. Note that */
+#define PGX_NEED_PGOPEN 8  /* Open to PGPLOT */
 
 static int pgx_ready ARGS((PgxWin *pgx, int state));
 
@@ -205,8 +213,8 @@ PgxState *pgx_open(pgx)
  * safe to pass it to pgx_close().
  */
   pgx->state = state;
-  state->geom.xpix_per_inch = 0;
-  state->geom.ypix_per_inch = 0;
+  state->geom.xpix_per_inch = 0.0;
+  state->geom.ypix_per_inch = 0.0;
   state->geom.width = 0;
   state->geom.height = 0;
   state->geom.xmargin = 0;
@@ -232,8 +240,6 @@ PgxState *pgx_open(pgx)
   state->world.yoff = 0.0;
   state->world.xdiv = 1.0;
   state->world.ydiv = 1.0;
-  state->image.npix = 0;
-  state->image.buff = NULL;
   state->image.xi = NULL;
   state->gc = NULL;
   state->last_opcode = 0;
@@ -264,32 +270,23 @@ PgxState *pgx_open(pgx)
     return pgx_close(pgx);
   };
 /*
- * Determine the required size of the buffer. This is determined by
- * the size of a pixel (the depth of the window), the number of
- * pixels required, and the max depth that xwdriv allows (32-bit).
- * In order to allow for 32-bit pixels round up the total number of
- * bytes to an integral number of 32-bit words.
- */
-  state->image.npix = PGX_IMAGE_LEN;
-  {
-    unsigned nbyte = ((pgx->color->vi->depth * state->image.npix + 31)/32) * 4;
-    state->image.buff = (unsigned char *) malloc(nbyte * sizeof(char));
-    if(!state->image.buff)  {
-      fprintf(stderr, "%s: Failed to allocate image buffer.\n", PGX_IDENT);
-      return pgx_close(pgx);
-    };
-  };
-/*
- * Create an X image container for use in transfering pixels to and from
- * state->image.buff[].
+ * Create the X image that we use to compose lines of pixels with given
+ * colors.
  */
   pgx_start_error_watch(pgx);
   state->image.xi = XCreateImage(pgx->display, pgx->color->vi->visual,
 				 (unsigned)pgx->color->vi->depth, ZPixmap, 0,
-				 (char *)state->image.buff,
-				 (unsigned)state->image.npix, 1, 32, 0);
+				 NULL, (unsigned)PGX_IMAGE_LEN, 1, 32, 0);
   if(pgx_end_error_watch(pgx) || !state->image.xi) {
     fprintf(stderr, "%s: Failed to allocate XImage descriptor.\n", PGX_IDENT);
+    return pgx_close(pgx);
+  };
+/*
+ * Allocate the image buffer.
+ */
+  state->image.xi->data = malloc((size_t) state->image.xi->bytes_per_line);
+  if(!state->image.xi->data) {
+    fprintf(stderr, "%s: Failed to allocate image buffer.\n", PGX_IDENT);
     return pgx_close(pgx);
   };
 /*
@@ -309,9 +306,6 @@ PgxState *pgx_open(pgx)
     fprintf(stderr, "%s: Failed to allocate graphical context.\n", PGX_IDENT);
     return pgx_close(pgx);
   };
-/*
- * Determine the current window size.
- */
 /*
  * Initialize attributes.
  */
@@ -352,11 +346,8 @@ PgxState *pgx_close(pgx)
  * Delete the image descriptor.
  */
     if(state->image.xi)
-      XFree((char *)state->image.xi);
+      XDestroyImage(state->image.xi);
     state->image.xi = NULL;
-    if(state->image.buff)
-      free((char *)state->image.buff);
-    state->image.buff = NULL;
 /*
  * Check for un-freed polygon points.
  */
@@ -617,6 +608,38 @@ int pgx_update_clip(pgx, doclip, width, height, border)
 }
 
 /*.......................................................................
+ * Update the dimensions of the optional X and Y axis margins. The new
+ * dimensions will be ignored until the start of the next page.
+ *
+ * Margins are blank areas left around the plottable viewsurface, purely
+ * for esthetic reasons.
+ *
+ * Input:
+ *  pgx      PgxWin *  The PGPLOT window context.
+ *  xmargin     int    The number of pixels to leave either side of
+ *                     the plot surface.
+ *  ymargin     int    The number of pixels to leave above and below
+ *                     the plot suface.
+ * Output:
+ *  return     int    0 - OK.
+ *                    1 - Error.
+ */
+#ifdef __STDC__
+int pgx_set_margin(PgxWin *pgx, int xmargin, int ymargin)
+#else
+int pgx_set_margin(pgx, xmargin, ymargin)
+     PgxWin *pgx; int xmargin; int ymargin;
+#endif
+{
+  if(pgx_ready(pgx, 0)) {
+    pgx->xmargin = xmargin > 0 ? xmargin : 0;
+    pgx->ymargin = ymargin > 0 ? ymargin : 0;
+    return 0;
+  };
+  return 1;
+}
+
+/*.......................................................................
  * Install a temporary error handler for use in detecting resource
  * allocation errors. The error handler will maintain a count of
  * errors, which will be returned by the matching function
@@ -753,14 +776,16 @@ static int pgx_error_handler(display, event)
  * Input:
  *  pgx      PgxWin *  The PGPLOT window context.
  *  max_col     int    The maximum number of colors to allow for.
+ *  readonly    int    True if readonly colors are sufficient.
+ *  vid    VisualID    The ID of the visual target visual.
  * Output:
  *  return PgxColor *  The new context descriptor, or NULL on error.
  */
 #ifdef __STDC__
-PgxColor *new_PgxColor(PgxWin *pgx, int max_col)
+PgxColor *new_PgxColor(PgxWin *pgx, int max_col, int readonly, VisualID vid)
 #else
-PgxColor *new_PgxColor(pgx, max_col)
-     PgxWin *pgx; int max_col;
+PgxColor *new_PgxColor(pgx, max_col, readonly, vid)
+     PgxWin *pgx; int max_col; int readonly; VisualID vid;
 #endif
 {
   PgxColor *color;  /* The new context descriptor */
@@ -789,6 +814,36 @@ PgxColor *new_PgxColor(pgx, max_col)
   color->xcolor = NULL;
   color->initialized = 0;
   color->default_class = 0;
+  color->readonly = readonly;
+  color->nwork = 0;
+  color->work = NULL;
+/*
+ * Get the visual information object.
+ */
+  color->vi = pgx_visual_info(pgx->display, pgx->screen, vid);
+  if(!color->vi)
+    return del_PgxColor(pgx, color);
+/*
+ * See what type of color allocation will be needed.
+ */
+  switch(color->vi->class) {
+  case PseudoColor:
+  case GrayScale:
+    color->readonly = readonly;
+    break;
+  case DirectColor:
+    color->readonly = 0;
+    break;
+  case StaticColor:
+  case TrueColor:
+  case StaticGray:
+    color->readonly = 1;
+    break;
+  default:
+    fprintf(stderr, "%s: Unknown colormap type.\n", PGX_IDENT);
+    return del_PgxColor(pgx, color);
+    break;
+  };
 /*
  * We can only handle between 2 and 256 colors.
  */
@@ -819,6 +874,20 @@ PgxColor *new_PgxColor(pgx, max_col)
     return del_PgxColor(pgx, color);
   };
 /*
+ * Allocate a work array for use by pgx_readonly_colors().
+ */
+  if(readonly) {
+    color->nwork = color->vi->colormap_size;
+    if(color->nwork > PGX_QUERY_MAX)
+      color->nwork = PGX_QUERY_MAX;
+    color->work = (XColor *) malloc(sizeof(XColor) * color->nwork);
+    if(!color->work) {
+      fprintf(stderr, "%s: Insufficient memory for shared-color allocation.\n",
+	      PGX_IDENT);
+      return del_PgxColor(pgx, color);
+    };
+  };
+/*
  * Leave the rest of the initialization to specific functions.
  */
   return color;
@@ -847,14 +916,8 @@ static PgxColor *del_PgxColor(pgx, color)
  * Release allocated colorcells.
  */
 	if(pgx->display && color->pixel && color->npixel > 0) {
-	  switch(color->vi->class) {
-	  case PseudoColor:
-	  case GrayScale:
-	  case DirectColor:
-	    XFreeColors(pgx->display, color->cmap, color->pixel,
-			color->npixel, (unsigned long)0);
-	    break;
-	  };
+	  XFreeColors(pgx->display, color->cmap, color->pixel,
+		      color->npixel, (unsigned long)0);
 	};
       };
 /*
@@ -875,6 +938,8 @@ static PgxColor *del_PgxColor(pgx, color)
       free(color->pixel);
     if(color->xcolor)
       free(color->xcolor);
+    if(color->work)
+      free(color->work);
 /*
  * Delete the container.
  */
@@ -919,16 +984,19 @@ static int pgx_default_class(pgx)
  *  min_col     int    The minimum acceptable number of colors before
  *                     switching to monochrome.
  *  max_col     int    The maximum number of colors to allocate.
+ *  readonly    int    If true, try to allocate readonly colors.
+ *                     false try to allocate read/write colors where
+ *                     available.
  * Output:
  *  return PgxColor *  The color/visual context descriprot, or NULL
  *                     on error.
  */
 #ifdef __STDC__
 PgxColor *pgx_new_visual(PgxWin *pgx, char *class_name, int min_col,
-		   int max_col)
+		   int max_col, int readonly)
 #else
-PgxColor *pgx_new_visual(pgx, class_name, min_col, max_col)
-     PgxWin *pgx; char *class_name; int min_col; int max_col;
+PgxColor *pgx_new_visual(pgx, class_name, min_col, max_col, readonly)
+     PgxWin *pgx; char *class_name; int min_col; int max_col; int readonly;
 #endif
 {
   PgxColor *color = NULL;   /* The new visual/colormap context descriptor */
@@ -959,7 +1027,7 @@ PgxColor *pgx_new_visual(pgx, class_name, min_col, max_col)
  * Use a specific visual class?
  */
   if(visual_class >= 0)
-    color = pgx_find_visual(pgx, visual_class, min_col, max_col);
+    color = pgx_find_visual(pgx, visual_class, min_col, max_col, readonly);
 /*
  * Should we perform a search for a suitable visual class?
  */
@@ -972,20 +1040,20 @@ PgxColor *pgx_new_visual(pgx, class_name, min_col, max_col)
     case StaticColor:
     case DirectColor:
     case TrueColor:
-      color = pgx_find_visual(pgx, PseudoColor, min_col, max_col);
+      color = pgx_find_visual(pgx, PseudoColor, min_col, max_col, readonly);
       if(!color)
-	color = pgx_find_visual(pgx, StaticColor, min_col, max_col);
+	color = pgx_find_visual(pgx, StaticColor, min_col, max_col, readonly);
       if(!color)
-	color = pgx_find_visual(pgx, TrueColor, min_col, max_col);
+	color = pgx_find_visual(pgx, TrueColor, min_col, max_col, readonly);
       break;
 /*
  * Gray-scale display?
  */
     case GrayScale:
     case StaticGray:
-      color = pgx_find_visual(pgx, GrayScale, min_col, max_col);
+      color = pgx_find_visual(pgx, GrayScale, min_col, max_col, readonly);
       if(!color)
-	color = pgx_find_visual(pgx, StaticGray, min_col, max_col);
+	color = pgx_find_visual(pgx, StaticGray, min_col, max_col, readonly);
       break;
     };
   };
@@ -1018,16 +1086,10 @@ PgxColor *pgx_bw_visual(pgx)
 /*
  * Allocate the context descriptor.
  */
-  color = new_PgxColor(pgx, 2);
+  color = new_PgxColor(pgx, 2, 1,
+	       XVisualIDFromVisual(DefaultVisual(pgx->display, pgx->screen)));
   if(!color)
     return NULL;
-/*
- * Get the visual-info context of the default visual.
- */
-  color->vi = pgx_visual_info(pgx->display, pgx->screen,
-	    XVisualIDFromVisual(DefaultVisual(pgx->display, pgx->screen)));
-  if(!color->vi)
-    return del_PgxColor(pgx, color);
 /*
  * Record the default-colormap ID.
  */
@@ -1064,14 +1126,17 @@ PgxColor *pgx_bw_visual(pgx)
  *  min_col     int    The minimum acceptable number of colors before
  *                     switching to monochrome.
  *  max_col     int    The maximum number of colors to allocate.
+ *  readonly    int    If true, try to allocate readonly colors.
+ *                     false try to allocate read/write colors where
+ *                     available.
  * Output:
  *  return  PgxColor * The context descriptor, or NULL on error.
  */
 #ifdef __STDC__
-PgxColor *pgx_default_visual(PgxWin *pgx, int min_col, int max_col)
+PgxColor *pgx_default_visual(PgxWin *pgx, int min_col, int max_col,int readonly)
 #else
-PgxColor *pgx_default_visual(pgx, min_col, max_col)
-     PgxWin *pgx; int min_col; int max_col;
+PgxColor *pgx_default_visual(pgx, min_col, max_col, readonly)
+     PgxWin *pgx; int min_col; int max_col; int readonly;
 #endif
 {
   PgxColor *color;   /* The new descriptor */
@@ -1091,16 +1156,10 @@ PgxColor *pgx_default_visual(pgx, min_col, max_col)
 /*
  * Allocate the context descriptor.
  */
-  color = new_PgxColor(pgx, max_col);
+  color = new_PgxColor(pgx, max_col, readonly,
+		XVisualIDFromVisual(DefaultVisual(pgx->display, pgx->screen)));
   if(!color)
     return NULL;
-/*
- * Get the visual-info context of the default visual.
- */
-  color->vi = pgx_visual_info(pgx->display, pgx->screen,
-	    XVisualIDFromVisual(DefaultVisual(pgx->display, pgx->screen)));
-  if(!color->vi)
-    return del_PgxColor(pgx, color);
 /*
  * Record the default-colormap ID.
  */
@@ -1145,15 +1204,19 @@ PgxColor *pgx_default_visual(pgx, min_col, max_col)
  *  min_col     int    The minimum acceptable number of colors before
  *                     switching to monochrome.
  *  max_col     int    The maximum number of colors to allocate.
+ *  readonly    int    If true, try to allocate readonly colors. If
+ *                     false try to allocate read/write colors where
+ *                     available.
  * Output:
  *  return  PgxColor * The context descriptor, or NULL on error.
  */
 #ifdef __STDC__
 PgxColor *pgx_adopt_visual(PgxWin *pgx, VisualID vid, Colormap cmap,
-			   int min_col, int max_col)
+			   int min_col, int max_col, int readonly)
 #else
-PgxColor *pgx_adopt_visual(pgx, vid, cmap, min_col, max_col)
+PgxColor *pgx_adopt_visual(pgx, vid, cmap, min_col, max_col, readonly)
      PgxWin *pgx; VisualID vid; Colormap cmap; int min_col; int max_col;
+     int readonly;
 #endif
 {
   PgxColor *color;   /* The new descriptor */
@@ -1173,15 +1236,9 @@ PgxColor *pgx_adopt_visual(pgx, vid, cmap, min_col, max_col)
 /*
  * Allocate the context descriptor.
  */
-  color = new_PgxColor(pgx, max_col);
+  color = new_PgxColor(pgx, max_col, readonly, vid);
   if(!color)
     return NULL;
-/*
- * Enquire about the specified visual.
- */
-  color->vi = pgx_visual_info(pgx->display, pgx->screen, vid);
-  if(!color->vi)
-    return del_PgxColor(pgx, color);
 /*
  * Record the colormap ID.
  */
@@ -1214,14 +1271,18 @@ PgxColor *pgx_adopt_visual(pgx, vid, cmap, min_col, max_col)
  *  min_col     int    The minimum acceptable number of colors before
  *                     switching to monochrome.
  *  max_col     int    The maximum number of colors to allocate.
+ *  readonly    int    If true, try to allocate readonly colors. If
+ *                     false try to allocate read/write colors where
+ *                     available.
  * Output:
  *  return  PgxColor * The context descriptor, or NULL on error.
  */
 #ifdef __STDC__
-PgxColor *pgx_window_visual(PgxWin *pgx, Window w, int min_col, int max_col)
+PgxColor *pgx_window_visual(PgxWin *pgx, Window w, int min_col, int max_col,
+			    int readonly)
 #else
-PgxColor *pgx_window_visual(pgx, w, min_col, max_col)
-     PgxWin *pgx; Window w; int min_col; int max_col;
+PgxColor *pgx_window_visual(pgx, w, min_col, max_col, readonly)
+     PgxWin *pgx; Window w; int min_col; int max_col; int readonly;
 #endif
 {
   XWindowAttributes attr;  /* The attributes of the specified window */
@@ -1240,7 +1301,7 @@ PgxColor *pgx_window_visual(pgx, w, min_col, max_col)
  * Install the visual and colormap recorded in the returned attributes.
  */
   return pgx_adopt_visual(pgx, XVisualIDFromVisual(attr.visual), attr.colormap,
-			  min_col, max_col);
+			  min_col, max_col, readonly);
 }
 
 /*.......................................................................
@@ -1255,16 +1316,19 @@ PgxColor *pgx_window_visual(pgx, w, min_col, max_col)
  *  min_col     int   The minimum acceptable number of colors before
  *                    switching to monochrome.
  *  max_col     int   The maximum number of colors to allocate.
+ *  readonly    int    If true, try to allocate readonly colors. If
+ *                     false try to allocate read/write colors where
+ *                     available.
  * Input/Output:
  *  return PgxColor * The context of the new visual/colormap, or NULL
  *                    if sufficient colors could not be obtained.
  */
 #ifdef __STDC__
 static PgxColor *pgx_find_visual(PgxWin *pgx, int class, int min_col,
-				 int max_col)
+				 int max_col, int readonly)
 #else
-static PgxColor *pgx_find_visual(pgx, class, min_col, max_col)
-     PgxWin *pgx; int class; int min_col; int max_col;
+static PgxColor *pgx_find_visual(pgx, class, min_col, max_col, readonly)
+     PgxWin *pgx; int class; int min_col; int max_col; int readonly;
 #endif
 {
   PgxColor *color = NULL;      /* The colormap/visual context to be returned */
@@ -1277,7 +1341,7 @@ static PgxColor *pgx_find_visual(pgx, class, min_col, max_col)
  * colors can be allocated from it.
  */
   if(class == pgx_default_class(pgx)) {
-    color = pgx_default_visual(pgx, min_col, max_col);
+    color = pgx_default_visual(pgx, min_col, max_col, readonly);
     if(color->ncol >= max_col)
       return color;
     else
@@ -1338,15 +1402,9 @@ static PgxColor *pgx_find_visual(pgx, class, min_col, max_col)
 /*
  * Allocate a visual/colormap context descriptor.
  */
-  color = new_PgxColor(pgx, max_col);
+  color = new_PgxColor(pgx, max_col, 0, vid);
   if(!color)
     return NULL;
-/*
- * Get a new visual-info descriptor for the visual.
- */
-  color->vi = pgx_visual_info(pgx->display, pgx->screen, vid);
-  if(!color->vi)
-    return del_PgxColor(pgx, color);
 /*
  * Bracket the colormap acquisition with pgx_start/end_error() calls, to
  * determine whether any allocation errors occur.
@@ -1403,14 +1461,14 @@ static PgxColor *pgx_find_visual(pgx, class, min_col, max_col)
 static int pgx_get_colorcells(PgxWin *pgx, PgxColor *color,
 			      int min_col, int max_col)
 #else
-static int pgx_get_colorcells(pgx, color, min_col, max_col)
+static int pgx_get_colorcells(pgx, color, min_col, max_col, readonly)
      PgxWin *pgx; PgxColor *color; int min_col; int max_col;
 #endif
 {
   XVisualInfo *vi;      /* Visual information (color->vi) */
   Colormap  cmap;       /* Colormap ID (color->cmap) */
   unsigned long maxcol; /* The max number of cells to attempt to allocate */
-  int ncol;             /* The number of color-cells allocated */
+  int i;
 /*
  * Get local pointers to relevant parts of the color context
  * descriptor.
@@ -1459,39 +1517,97 @@ static int pgx_get_colorcells(pgx, color, min_col, max_col)
  * Don't try to allocate anything if there are too few colors available.
  */
   if(maxcol < min_col) {
-    ncol = 0;
-  } else {
-    unsigned long planes[1];
-    unsigned int nplanes = 0;
+    color->ncol = 0;
 /*
- * Dynamic colormaps require one to allocate cells explicitly.
- * Allocate up to maxcol color cells.
+ * Defer shared color allocation to pgx_init_colors().
  */
-    switch(vi->class) {
-    case PseudoColor:
-    case GrayScale:
-    case DirectColor:
+  } else if(color->readonly) {
+    for(i=0; i<maxcol; i++)
+      color->pixel[i] = 0;
+    color->ncol = maxcol;
+    color->npixel = 0;  /* No pixels allocated yet */
+/*
+ * Allocate read/write colorcells.
+ */
+  } else {
+    if(pgx_get_mutable_colorcells(pgx, color, min_col, max_col))
+      return 1;
+  };
+/*
+ * Too few colors?
+ */
+  if(color->ncol < min_col)
+    return 1;
+/*
+ * We got more than two colors.
+ */
+  color->monochrome = 0;
+  return 0;
+}
+
+/*.......................................................................
+ * This is a private function of pgx_get_colorcells() used to allocate
+ * read/write colorcells.
+ *
+ * Input:
+ *  pgx      PgxWin *  The PGPLOT window context.
+ *  color  PgxColor *  The visual/colormap context descriptor.
+ *                     The cmap and vi fields must be initialized before
+ *                     calling this function.
+ *  min_col     int    The minimum acceptable number of colors.
+ *  max_col     int    The maximum number of colors to allocate.
+ * Output:
+ *  color->pixel[]     The colorcell indexes.
+ *  color->ncol        The number of color pixels to use from color->pixel[].
+ *  color->npixel      The number of private color-cells allocated in pixel[].
+ *  return      int    0 - OK.
+ *                     1 - Unable to acquire at least min_col colors.
+ */
+#ifdef __STDC__
+static int pgx_get_mutable_colorcells(PgxWin *pgx, PgxColor *color,
+			      int min_col, int max_col)
+#else
+static int pgx_get_mutable_colorcells(pgx, color, min_col, max_col)
+     PgxWin *pgx; PgxColor *color; int min_col; int max_col;
+#endif
+{
+  XVisualInfo *vi;      /* Visual information (color->vi) */
+  Colormap  cmap;       /* Colormap ID (color->cmap) */
+  unsigned long maxcol; /* The max number of cells to attempt to allocate */
+  int ncol;             /* The number of color-cells allocated */
+  unsigned long planes[1];  /* Dummy plane array needed by XAllocColorCells() */
+  unsigned int nplanes = 0; /* Dummy plane count needed by XAllocColorCells() */
+/*
+ * Get local pointers to relevant parts of the color context
+ * descriptor.
+ */
+  vi = color->vi;
+  cmap = color->cmap;
+/*
+ * Determine the max number of cells to try to allocate.
+ */
+  maxcol = vi->colormap_size <= max_col ? vi->colormap_size : max_col;
 /*
  * See if we can get all of the colors requested.
  */
-      if(XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
-			  color->pixel, (unsigned) maxcol)) {
-	ncol = maxcol;
+  if(XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
+		      color->pixel, (unsigned) maxcol)) {
+    ncol = maxcol;
 /*
  * If there aren't at least min_col color cells available, then
  * give up on this colormap.
  */
-      } else if(!XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
-				  color->pixel, (unsigned) min_col)) {
-	ncol = 0;
-      } else {
+  } else if(!XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
+			      color->pixel, (unsigned) min_col)) {
+    ncol = 0;
+  } else {
 /*
  * Since we were able to allocate min_col cells, we may be able to
  * allocate more. First discard the min_col cells, so that we can
  * try for a bigger number.
  */
-	XFreeColors(pgx->display, cmap, color->pixel, (int) min_col,
-		    (unsigned long)0);
+    XFreeColors(pgx->display, cmap, color->pixel, (int) min_col,
+		(unsigned long)0);
 /*
  * Since there is no direct method to determine the number of allocatable
  * color cells available in a colormap, perform a binary search for the
@@ -1500,61 +1616,40 @@ static int pgx_get_colorcells(pgx, color, min_col, max_col)
  * invalidates the result of the search and is the reason for the outer
  * while loop.
  */
-	ncol = 0;
-	do {
-	  int lo = min_col;
-	  int hi = maxcol;
-	  while(lo<=hi) {
-	    int mid = (lo+hi)/2;
-	    if(XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
-				color->pixel, (unsigned) mid)) {
-	      ncol = mid;
-	      lo = mid + 1;
-	      XFreeColors(pgx->display, cmap, color->pixel, mid,
-			  (unsigned long)0);
-	    } else {
-	      hi = mid - 1;
-	    };
-	  };
-	} while(ncol >= min_col &&
-		!XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
-				  color->pixel, (unsigned) ncol));
+    ncol = 0;
+    do {
+      int lo = min_col;
+      int hi = maxcol;
+      while(lo<=hi) {
+	int mid = (lo+hi)/2;
+	if(XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
+			    color->pixel, (unsigned) mid)) {
+	  ncol = mid;
+	  lo = mid + 1;
+	  XFreeColors(pgx->display, cmap, color->pixel, mid,
+		      (unsigned long)0);
+	} else {
+	  hi = mid - 1;
+	};
       };
-/*
- * Record the number of allocated cells so that del_PgxColor() knows
- * how many to free.
- */
-      if(ncol >= min_col)
-	color->npixel = ncol;
-      break;
-/*
- * For static color maps, color-cell pixel indexes will be assigned later
- * with XAllocColor() in pgx_set_rgb(). For now simply assign 0 to all
- * pixels.
- */
-    case StaticColor:
-    case TrueColor:
-    case StaticGray:
-      for(ncol=0; ncol<maxcol; ncol++)
-	color->pixel[ncol] = 0;
-      ncol = maxcol;
-      color->npixel = 0;  /* No pixels needed to be allocated */
-      break;
-    default:
-      ncol = 0;
-      break;
-    };
+    } while(ncol >= min_col &&
+	    !XAllocColorCells(pgx->display, cmap, False, planes, nplanes,
+			      color->pixel, (unsigned) ncol));
   };
 /*
- * Too few colors?
+ * Did we fail?
  */
   if(ncol < min_col)
     return 1;
 /*
- * Record what we got.
+ * Record the number of pixels that will need to be free'd when
+ * del_PgxColor() is eventually called.
+ */
+  color->npixel = ncol;
+/*
+ * Record the number of colors obtained.
  */
   color->ncol = ncol;
-  color->monochrome = 0;
   return 0;
 }
 
@@ -2163,13 +2258,13 @@ void pgx_rect_fill(pgx, rbuf)
  *
  * Input:
  *  pgx     PgxWin *  The PGPLOT window context.
- *  lw         int    The new line width in units of 0.005 inches.
+ *  lw       float    The new line width in units of 0.005 inches.
  */
 #ifdef __STDC__
-void pgx_set_lw(PgxWin *pgx, int lw)
+void pgx_set_lw(PgxWin *pgx, float lw)
 #else
 void pgx_set_lw(pgx, lw)
-     PgxWin *pgx; int lw;
+     PgxWin *pgx; float lw;
 #endif
 {
   if(pgx_ready(pgx, PGX_NEED_PGOPEN)) {
@@ -2177,7 +2272,7 @@ void pgx_set_lw(pgx, lw)
 /*
  * The line width is provided in multiples of 0.005 inches.
  */
-    state->gcv.line_width = lw * 0.005 * state->geom.xpix_per_inch;
+    state->gcv.line_width = (lw * 0.005 * state->geom.xpix_per_inch) + 0.5;
     XChangeGC(pgx->display, state->gc, (unsigned long)GCLineWidth, &state->gcv);
   };
   return;
@@ -2227,16 +2322,16 @@ int pgx_pix_line(pgx, rbuf, nbuf)
  * Draw up to PGX_IMAGE_LEN pixels at a time. This is the size of the
  * buffer: state->xi->data[].
  */
-    for(ndone=0; !pgx->bad_device && ndone<ncell; ndone += image->npix) {
-      int ntodo = ncell-ndone;
-      int nimage = ntodo < image->npix ? ntodo : image->npix;
+    for(ndone=0; !pgx->bad_device && ndone<ncell; ndone += PGX_IMAGE_LEN) {
+      int ntodo = ncell - ndone;
+      int nimage = ntodo < PGX_IMAGE_LEN ? ntodo : PGX_IMAGE_LEN;
 /*
  * Load the image buffer with the color cell indexes assigned to the
  * given PGPLOT color indexes.
  */
       if(pgx->color->vi->depth == 8) {
 	for(i=0; i<nimage; i++)
-	  image->buff[i] = pgx->color->pixel[(int) (cells[ndone+i] + 0.5)];
+	  image->xi->data[i] = pgx->color->pixel[(int) (cells[ndone+i] + 0.5)];
       } else {
 	for(i=0; i<nimage; i++) {
 	  XPutPixel(image->xi, i, 0,
@@ -2388,9 +2483,11 @@ int pgx_set_rgb(pgx, ci, red, green, blue)
 	};
 /*
  * Register pgx_update_colors() to be called to flush the colors to the
- * window.
+ * window. Don't do this if we are sharing readonly colors, because
+ * these should not be reallocated until the start of the next page.
  */
-	state->flush_opcode_fn = (Flush_Opcode_fn) pgx_update_colors;
+	if(!pgx->color->readonly)
+	  state->flush_opcode_fn = (Flush_Opcode_fn) pgx_update_colors;
       };
     };
   };
@@ -2515,8 +2612,6 @@ static int pgx_flush_colors(pgx, ci_start, ncol)
      PgxWin *pgx; int ci_start; int ncol;
 #endif
 {
-  int bad_colors = 0;  /* The number of failed color assignments */
-  int i;
   if(pgx_ready(pgx, PGX_NEED_COLOR) && !pgx->color->monochrome) {
 /*
  * If the range of color indexes is invalid, warn the user and
@@ -2535,27 +2630,16 @@ static int pgx_flush_colors(pgx, ci_start, ncol)
       XColor *xc = &pgx->color->xcolor[ci_start];
       unsigned long *pixel = &pgx->color->pixel[ci_start];
 /*
- * Install the colors in the color map.
+ * Allocate shared colorcells?
  */
-      switch(pgx->color->vi->class) {
-      case PseudoColor:
-      case GrayScale:
-      case DirectColor:
+      if(pgx->color->readonly) {
+	if(pgx_readonly_colors(pgx, ncol, xc, pixel))
+	  return 1;
+/*
+ * Modify existing read/write colorcells.
+ */
+      } else {
 	XStoreColors(pgx->display, pgx->color->cmap, xc, ncol);
-	break;
-      case StaticColor:
-      case StaticGray:
-      case TrueColor:
-	for(i=0; i<ncol && !pgx->bad_device; i++) {
-	  if(XAllocColor(pgx->display, pgx->color->cmap, &xc[i])) {
-	    if(pgx->color->initialized)
-	      XFreeColors(pgx->display, pgx->color->cmap, &pixel[i], 1, (long)0);
-	    pixel[i] = xc[i].pixel;
-	  } else {
-	    bad_colors++;
-	  };
-	};
-	break;
       };
 /*
  * Device error?
@@ -2567,14 +2651,6 @@ static int pgx_flush_colors(pgx, ci_start, ncol)
  */
       if(ci_start == 0 && pgx->window != None)
 	XSetWindowBackground(pgx->display, pgx->window, pixel[0]);
-/*
- * Did any of the color assignments fail?
- */
-      if(bad_colors > 0) {
-	fprintf(stderr,
-		"%s: Error setting the color representations of %d colors.\n",
-		PGX_IDENT, bad_colors);
-      };
     };
   };
   return pgx->bad_device!=0;
@@ -2637,6 +2713,23 @@ int pgx_clear_window(pgx)
 {
   if(pgx_ready(pgx, PGX_NEED_WINDOW)) {
 /*
+ * Clear the window itself.
+ */
+    if(pgx->clip.doclip) {
+      pgx_clear_area(pgx, pgx->clip.xmin, pgx->clip.ymin,
+		     (pgx->clip.xmax - pgx->clip.xmin + 1),
+		     (pgx->clip.ymax - pgx->clip.ymin + 1));
+    } else {
+      XClearWindow(pgx->display, pgx->window);
+    };
+    if(pgx->bad_device)
+      return 1;
+/*
+ * Flush any defered readonly color-cell updates.
+ */
+    if(pgx_update_colors(pgx))
+      return 1;
+/*
  * Fill the pixmap with the background color.
  */
     if(pgx_ready(pgx, PGX_NEED_COLOR | PGX_NEED_PIXMAP)) {
@@ -2665,18 +2758,6 @@ int pgx_clear_window(pgx)
       if(pgx->state)
 	pgx->state->update.modified = 0;
     };
-/*
- * Clear the window itself.
- */
-    if(pgx->clip.doclip) {
-      pgx_clear_area(pgx, pgx->clip.xmin, pgx->clip.ymin,
-		     (pgx->clip.xmax - pgx->clip.xmin + 1),
-		     (pgx->clip.ymax - pgx->clip.ymin + 1));
-    } else {
-      XClearWindow(pgx->display, pgx->window);
-    };
-    if(pgx->bad_device)
-      return 1;
     XFlush(pgx->display);
     if(pgx->bad_device)
       return 1;
@@ -2691,16 +2772,16 @@ int pgx_clear_window(pgx)
  * values will be returned.
  *
  * Input:
- *  pgx         PgxWin *  The PGPLOT window context.
+ *  pgx           PgxWin *  The PGPLOT window context.
  * Input/Output:
- *  xpix_per_inch  int *  The number of pixels per inch along X.
- *  ypix_per_inch  int *  The number of pixels per inch along Y.
+ *  xpix_per_inch  float *  The number of pixels per inch along X.
+ *  ypix_per_inch  float *  The number of pixels per inch along Y.
  */
 #ifdef __STDC__
-void pgx_get_resolution(PgxWin *pgx, int *xpix_per_inch, int *ypix_per_inch)
+void pgx_get_resolution(PgxWin *pgx, float *xpix_per_inch, float *ypix_per_inch)
 #else
 void pgx_get_resolution(pgx, xpix_per_inch, ypix_per_inch)
-     PgxWin *pgx; int *xpix_per_inch; int *ypix_per_inch;
+     PgxWin *pgx; float *xpix_per_inch; float *ypix_per_inch;
 #endif
 {
   if(pgx && pgx->display && !pgx->bad_device) {
@@ -2720,9 +2801,9 @@ void pgx_get_resolution(pgx, xpix_per_inch, ypix_per_inch)
     return;
   } else {
     if(xpix_per_inch)
-      *xpix_per_inch = 1;
+      *xpix_per_inch = 1.0;
     if(ypix_per_inch)
-      *ypix_per_inch = 1;
+      *ypix_per_inch = 1.0;
   };
   return;
 }
@@ -2766,13 +2847,10 @@ void pgx_def_size(pgx, d_width, d_height, rbuf, nbuf)
  */
   if(pgx && pgx->display && !pgx->bad_device) {
     XWindowAttributes attr;
-    int xpix_per_inch;
-    int ypix_per_inch;
-    pgx_get_resolution(pgx, &xpix_per_inch, &ypix_per_inch);
     XGetWindowAttributes(pgx->display, pgx->window, &attr);
     if(!pgx->bad_device) {
-      rbuf[1] = (float) (attr.width - 2 * pgx->margin * xpix_per_inch);
-      rbuf[3] = (float) (attr.height - 2 * pgx->margin * ypix_per_inch);
+      rbuf[1] = (float) (attr.width - 2 * pgx->xmargin);
+      rbuf[3] = (float) (attr.height - 2 * pgx->ymargin);
       if(rbuf[1] > 2 && rbuf[3] > 2)
 	return;
     };
@@ -2813,8 +2891,8 @@ void pgx_begin_picture(pgx, rbuf)
 /*
  * Determine the X and Y axis margins.
  */
-    state->geom.xmargin = state->geom.xpix_per_inch * pgx->margin;
-    state->geom.ymargin = state->geom.ypix_per_inch * pgx->margin;
+    state->geom.xmargin = pgx->xmargin;
+    state->geom.ymargin = pgx->ymargin;
 /*
  * Convert the passed max X and Y coordinates into the total width of the
  * new window and pixmap. Add margins to the requested area.
@@ -4058,7 +4136,8 @@ PgxWin *new_PgxWin(display, screen, context, name, resize_fn, pixmap_fn)
   pgx->expose_gc = NULL;
   pgx->bad_device = 0;
   pgx->name = NULL;
-  pgx->margin = 0.25;
+  pgx->xmargin = 0;
+  pgx->ymargin = 0;
   pgx->color = NULL;
   pgx->clip.doclip = 0;
   pgx->clip.xmin = pgx->clip.xmax = 0;
@@ -4306,8 +4385,11 @@ int pgx_set_background(pgx, xc)
       return 1;
 /*
  * Flush the changed color to the X server.
+ * If the allocated color cells are readonly, defer the update until
+ * the next page.
  */
-    if(pgx->state ? pgx_update_colors(pgx) : pgx_flush_colors(pgx, 0, 1))
+    if((!pgx->color->readonly && pgx->state) ?
+       pgx_update_colors(pgx) : pgx_flush_colors(pgx, 0, 1))
       return 1;
   };
   return 0;
@@ -4345,8 +4427,11 @@ int pgx_set_foreground(pgx, xc)
       return 1;
 /*
  * Flush the changed color to the X server.
+ * If the allocated color cells are readonly, defer the update until
+ * the next page.
  */
-    if(pgx->state ? pgx_update_colors(pgx) : pgx_flush_colors(pgx, 0, 1))
+    if((!pgx->color->readonly && pgx->state) ?
+       pgx_update_colors(pgx) : pgx_flush_colors(pgx, 1, 1))
       return 1;
   };
   return 0;
@@ -4730,3 +4815,308 @@ Window pgx_parent_window(pgx)
   return parent;
 }
 
+/*.......................................................................
+ * Replace an existing set of readonly colors with new color representations.
+ *
+ * Input:
+ *  pgx           PgxWin *  The PGPLOT window context.
+ *  ncol             int    The number of colors to redefine.
+ * Input/Output:
+ *  colors        XColor *  On input pass the array of ncol color
+ *                          representations to allocate. On output this
+ *                          will contain the newly allocated colors.
+ *  pixels unsigned long *  The array of pixels corresponding to colors.
+ *                          On calls when pgx->color->initialized is true
+ *                          this should contain the pixels that are to be
+ *                          replaced. On output it will contain the
+ *                          allocated pixels.
+ * Output: 
+ *  return           int    0 - OK.
+ *                          1 - Error.
+ */
+#ifdef __STDC__
+static int pgx_readonly_colors(PgxWin *pgx, int ncol, XColor *colors,
+			     unsigned long *pixels)
+#else
+static int pgx_readonly_colors(pgx, ncol, colors, pixels)
+     PgxWin *pgx; int ncol; XColor *colors; unsigned long *pixels;
+#endif
+{
+  int ngot=0;    /* The number of colors acquired */
+  int i;
+/*
+ * Get aliases to objects in pgx.
+ */
+  Colormap cmap = pgx->color->cmap;
+  Display *display = pgx->display;
+/*
+ * No colors required?
+ */
+  if(ncol < 1)
+    return 0;
+/*
+ * First discard all but the first of the colors that we are replacing.
+ * The first will be used as a fallback if the first pgx->color->nwork
+ * entries of the colormap contain no shared colors.
+ */
+  if(pgx->color->initialized)
+    XFreeColors(display, cmap, pixels+1, ncol-1, (long)0);
+/*
+ * First ask for precise versions of the requested colors. If the
+ * colormap is readonly, the X server will actually return the
+ * nearest approximation. If the colormap is read/write XAllocColor
+ * is documented to fail up if it can't find exactly the color that
+ * one asks for (within the color resolution of the hardware)!
+ * Mark those that can't be allocated by setting their flags to 0.
+ */
+  for(i=0; i<ncol; i++) {
+    XColor *c = colors + i;
+    if(XAllocColor(display, cmap, c))
+      ngot++;
+    else
+      c->flags = 0;
+  };
+/*
+ * If we failed to allocate precise versions of any of the colors,
+ * try to allocate approximate versions of the colors. Note that
+ * the X server is supposed to do this for us if the colormap is
+ * readonly, but not if it is read/write.
+ */
+  if(ngot < ncol) {
+    XColor *last=NULL; /* The last color looked at while allocating colors */
+    int napprox=0;     /* The number of approximate colors to choose from */
+/*
+ * Get the work array and its size.
+ */
+    XColor *work = pgx->color->work;
+    int nwork = pgx->color->nwork;
+/*
+ * Ask the server for the first nwork colors in its colormap.
+ */
+    for(i=0; i<nwork; i++)
+      work[i].pixel = i;
+    XQueryColors(display, cmap, work, nwork);
+/*
+ * Sort the colors into ascending order of red,green,blue intensities.
+ */
+    qsort(work, nwork, sizeof(work[0]), pgx_cmp_xcolor);
+/*
+ * Attempt to allocate as many of the reported colors as possible,
+ * being careful to ignore duplicate entries. Copy the napprox
+ * allocated ones to the start of the work array.
+ */
+    for(i=0; i<nwork; i++) {
+      XColor *c = work + i;
+      if((!last || c->red != last->red || c->green != last->green ||
+	  c->blue != last->blue)) {
+	if(XAllocColor(display, cmap, c)) {
+	  if(i != napprox)
+	    work[napprox] = *c;
+	  napprox++;
+	};
+	last = c;
+      };
+    };
+/*
+ * Fill in the outstanding PGPLOT colors from those remaining in the work
+ * array. Note that we must also re-allocate each of the chosen colors
+ * so that it can be free'd as many times as it appears in our color table.
+ */
+    for(i=0; i < ncol; i++) {
+      XColor *c = colors + i;
+      if(!c->flags) {
+	if(pgx_nearest_color(work, napprox, c) ||
+	   !XAllocColor(display, cmap, c))
+	  break;
+	else
+	  ngot++;
+      };
+    };
+/*
+ * Release the work array of colors (note that the colors that were
+ * chosen above were duplicately allocated, and X uses a reference
+ * counting scheme for colormap entries, so this won't invalidate them).
+ */
+    for(i=0; i<napprox; i++) {
+      XColor *c = work + i;
+      XFreeColors(display, cmap, &c->pixel, 1, 0);
+    };
+  };
+/*
+ * Did we fail to get all of the required colors?
+ */
+  if(ngot < ncol) {
+/*
+ * If we were (re-)allocating the whole colortable, discard all colors
+ * allocated above the first that we failed to get and reduce ncol to
+ * account for this.
+ */
+    if(pixels==pgx->color->pixel && ncol >= pgx->color->npixel) {
+      for(ngot=0; ngot<ncol && colors[ngot].flags; ngot++)
+	;
+      for(i=ngot; i<ncol; i++)
+	XFreeColors(display, cmap, &colors[i].pixel, 1, 0);
+/*
+ * If there are no colors at all, then there isn't anything that
+ * we can do. Note that if we are allocating from the default
+ * colormap of the screen, BlackPixel() and WhitePixel() are
+ * guaranteed to be available and shareable, so it is only
+ * private colormaps that should suffer this problem. In private
+ * colormaps there is no equivalent of BlackPixel() or WhitePixel(),
+ * so we have nothing to fall back on.
+ */
+      if(ngot < 2) {
+	for(i=0; i<ngot; i++)
+	  XFreeColors(display, cmap, &colors[i].pixel, 1, 0);
+	fprintf(stderr, "%s: There aren't any colors available.\n", PGX_IDENT);
+	return 1;
+      };
+/*
+ * Record the dimensions of the resized color table.
+ */
+      pgx->color->npixel = ngot;
+      pgx->color->ncol = ngot;
+/*
+ * If we were replacing entries, then the size of the color table has already
+ * been fixed, so we need to fill in the missing colors. Since we may not have
+ * managed to allocate any colors, find out the color representation of the
+ * first of the colors that we were replacing and reallocate for each of
+ * the missing slots. Note that we were careful not to free this color
+ * above, so it is supposedly guaranteed to still be allocatable as a
+ * shared color.
+ */
+    } else {
+/*
+ * Get the color representation of the fallback color.
+ */
+      XColor fallback;   /* The color being used as a fallback */
+      fallback.pixel = pixels[0];
+      XQueryColor(display, cmap, &fallback);
+/*
+ * Re-allocate the fallback entry for each missing color.
+ */
+      for(i=0; i<ncol; i++) {
+	XColor *c = colors + i;
+	if(!c->flags) {
+	  (void) XAllocColor(display, cmap, &fallback);
+	  *c = fallback;
+	};
+      };
+/*
+ * We now have the requested number of colors, albeit with
+ * unexpected colors.
+ */
+      ngot = ncol;
+    };
+  };
+/*
+ * Release the unfree'd first entry of the replaced colors.
+ */
+  if(pgx->color->initialized)
+    XFreeColors(display, cmap, pixels, 1, 0);
+/*
+ * Record the new pixel indexes.
+ */
+  for(i=0; i<ngot; i++)
+    pixels[i] = colors[i].pixel;
+  return 0;
+}
+
+/*.......................................................................
+ * This is a qsort comparison function used to sort an array XColor
+ * entries into ascending order. The colors are sorted into ascending
+ * order using red as the primary sort key, green as the second
+ * sort key and blue as the third sort key.
+ */
+#ifdef __STDC__
+static int pgx_cmp_xcolor(const void *va, const void *vb)
+#else
+static int pgx_cmp_xcolor(va, vb)
+     char *va; char *vb;
+#endif
+{
+  XColor *ca = (XColor *) va;
+  XColor *cb = (XColor *) vb;
+/*
+ * Compare the red components.
+ */
+  if(ca->red < cb->red)
+    return -1;
+  else if(ca->red > cb->red)
+    return 1;
+/*
+ * The red components are the same, so compare the green components.
+ */
+  if(ca->green < cb->green)
+    return -1;
+  else if(ca->green > cb->green)
+    return 1;
+/*
+ * Both the red components and the green components are the same,
+ * so compare the blue components.
+ */
+  if(ca->blue < cb->blue)
+    return -1;
+  else if(ca->blue > cb->blue)
+    return 1;
+/*
+ * The colors are identical.
+ */
+  return 0;
+}
+
+/*.......................................................................
+ * Find the nearest color in colors[] and assign it to *c.
+ *
+ * Input:
+ *  colors  XColor *  An array of ncol colors from which to choose.
+ *                    Those whose flags are 0 are used.
+ *  ncol       int    The number of entries in colors[].
+ * Input/Output:
+ *  c       XColor *  On input this should contain the desired color.
+ *                    On output it will contain the nearest unused color
+ *                    found in colors[].
+ * Output:
+ *  return     int    0 - OK.
+ *                    1 - There are no colors left.
+ */
+#ifdef __STDC__
+static int pgx_nearest_color(XColor *colors, int ncol, XColor *c)
+#else
+static int pgx_nearest_color(colors, ncol, c)
+     XColor *colors; int ncol; XColor *c;
+#endif
+{
+  XColor *best=NULL;  /* The nearest color found so far */
+  float residual=0;   /* The square color residual of best compared to c */
+  int first = 1;      /* True until residual has been initialized */
+  int i;
+/*
+ * Find the unused entry in colors[] that is nearest to the requested color.
+ */
+  for(i=0; i<ncol; i++) {
+    XColor *xc = colors + i;
+/*
+ * Compute the square residual between the two colors.
+ */
+    float dr = c->red - xc->red;
+    float dg = c->green - xc->green;
+    float db = c->blue - xc->blue;
+    float r = dr * dr + dg * dg + db * db;
+    if(r < residual || first) {
+      first = 0;
+      residual = r;
+      best = xc;
+    };
+  };
+/*
+ * Not found?
+ */
+  if(!best)
+    return 1;
+/*
+ * Copy the color to the return container.
+ */
+  *c = *best;
+  return 0;
+}

@@ -71,7 +71,7 @@ XErrorEvent *err;
 	fd_dispopen = 0;
 	fprintf(stderr, "Error on X event stream!\n");
 
-	return;
+	return 0;
 }
 
 /* The sendcommand routine sends the specified command buffer piece by piece */

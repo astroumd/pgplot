@@ -7,7 +7,8 @@
 	ier = grgmem (size,pointer)
 
   where : size is an integer size of memory to allocate
-	  pointer is an integer to return the pointer into
+	  pointer is an integer (integer*8 on some systems)
+           to return the pointer into
 
 */
 
@@ -20,11 +21,12 @@
 #endif
 
 int GRGMEM(size, pointer)
-int *size, *pointer;
+int *size;
+void **pointer;
 {
-  char *area = malloc(*size);
-  *pointer = (int)area;
-  if (area == NULL) return 0;
+  *pointer = malloc(*size);
+  /* printf("grgmem: %d %p\n", *size, *pointer); */
+  if (*pointer == NULL) return 0;
   return 1;
 }
 
@@ -40,9 +42,10 @@ int *size, *pointer;
 */
 
 int GRFMEM(size, pointer)
-int *size, *pointer;
+int *size;
+void **pointer;
 {
-  char *area = (char *)*pointer;
-  free(area);
+  free(*pointer);
   return 1;
 }
+

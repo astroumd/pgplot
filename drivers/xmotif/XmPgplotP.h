@@ -75,6 +75,11 @@ typedef struct XmPgplotPart {
   Colormap colormap;    /* The default colormap to use */
   Visual *visual;       /* The default visual to use */  
   XtCallbackList resize_callback; /* User resize-window callbacks */
+  Dimension pad_x;      /* The number of pixels to assign to the optional */
+                        /*  margin either side of the viewsurface */
+  Dimension pad_y;      /* The number of pixels to assign to the optional */
+                        /*  margin above and below the viewsurface */
+  Boolean share;        /* Non-zero to allocate shared color cells */
 /* Private attributes */
   XmPgplotWidget next;  /* The next widget of a list of PGPLOT Motif widgets */
   int xmslct_id;        /* The device ID returned to PGPLOT by the */

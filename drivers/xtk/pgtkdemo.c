@@ -77,6 +77,7 @@ typedef struct {
   Vertex va;          /* The start of the latest slice line */
   Vertex vb;          /* The end of the latest slice line */
   int have_slice;     /* This true when va and vb contain valid slice limits */
+  int monochrome;     /* True if the image colormap only contains two colors */
 } Pgdemo;
 
 static Pgdemo *new_Pgdemo(Tcl_Interp *interp, char *caller, char *cmd,
@@ -93,6 +94,8 @@ static int pgdemo_slice_command(Pgdemo *demo, Tcl_Interp *interp, int argc,
 				   char *argv[]);
 static int pgdemo_redraw_slice_command(Pgdemo *demo, Tcl_Interp *interp,
 				       int argc, char *argv[]);
+static int pgdemo_recolor_image_command(Pgdemo *demo, Tcl_Interp *interp,
+					int argc, char *argv[]);
 static int demo_display_fn(Pgdemo *demo, Tcl_Interp *interp, IMAGE_FN(*fn));
 static int demo_display_image(Pgdemo *demo, int id);
 static int demo_display_slice(Pgdemo *demo, Vertex *va, Vertex *vb);
@@ -106,6 +109,72 @@ static int create_pgdemo(ClientData data, Tcl_Interp *interp, int argc,
 
 static int valid_demo_script(char *name);
 static int Demo_AppInit(Tcl_Interp *interp);
+
+/*
+ * Define some color tables.
+ */
+
+/*
+ * Define single-color ramp functions.
+ */
+static float grey_l[]  = {0.0,1.0};
+static float grey_c[]  = {0.0,1.0};
+
+/*
+ * Define a rainbow color table.
+ */
+static float rain_l[] = {-0.5, 0.0, 0.17, 0.33, 0.50, 0.67, 0.83, 1.0, 1.7};
+static float rain_r[] = { 0.0, 0.0,  0.0,  0.0,  0.6,  1.0,  1.0, 1.0, 1.0};
+static float rain_g[] = { 0.0, 0.0,  0.0,  1.0,  1.0,  1.0,  0.6, 0.0, 1.0};
+static float rain_b[] = { 0.0, 0.3,  0.8,  1.0,  0.3,  0.0,  0.0, 0.0, 1.0};
+
+/*
+ * Iraf "heat" color table.
+ */
+static float heat_l[] = {0.0, 0.2, 0.4, 0.6, 1.0};
+static float heat_r[] = {0.0, 0.5, 1.0, 1.0, 1.0};
+static float heat_g[] = {0.0, 0.0, 0.5, 1.0, 1.0};
+static float heat_b[] = {0.0, 0.0, 0.0, 0.3, 1.0};
+
+/*
+ * AIPS tvfiddle discrete rainbow color table.
+ */
+static float aips_l[] = {0.0, 0.1, 0.1, 0.2, 0.2, 0.3, 0.3, 0.4, 0.4, 0.5,
+			 0.5, 0.6, 0.6, 0.7, 0.7, 0.8, 0.8, 0.9, 0.9, 1.0};
+static float aips_r[] = {0.0, 0.0, 0.3, 0.3, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0,
+			 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+static float aips_g[] = {0.0, 0.0, 0.3, 0.3, 0.0, 0.0, 0.0, 0.0, 0.8, 0.8,
+			 0.6, 0.6, 1.0, 1.0, 1.0, 1.0, 0.8, 0.8, 0.0, 0.0};
+static float aips_b[] = {0.0, 0.0, 0.3, 0.3, 0.7, 0.7, 0.7, 0.7, 0.9, 0.9,
+			 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+/*
+ * Define a macro that returns the number of elements in a static array.
+ */
+#ifdef COUNT
+#undef COUNT
+#endif
+#define COUNT(lev) sizeof(lev)/sizeof(lev[0])
+
+/*
+ * List the supported color tables.
+ */
+typedef struct {
+  char *name;    /* The name of the color table */
+  int n;         /* The number of nodes in the color table */
+  float *l;      /* The normalized color-table positions of the n nodes */
+  float *r;      /* The n red normalized intensities */
+  float *g;      /* The n green normalized intensities */
+  float *b;      /* The n blue normalized intensities */
+} Cmap;
+
+static Cmap std_cmaps[] = {
+  {"grey",    COUNT(grey_l),   grey_l,  grey_c,  grey_c,  grey_c},
+  {"rainbow", COUNT(rain_l),   rain_l,  rain_r,  rain_g,  rain_b},
+  {"heat",    COUNT(heat_l),   heat_l,  heat_r,  heat_g,  heat_b},
+  {"aips",    COUNT(aips_l),   aips_l,  aips_r,  aips_g,  aips_b},
+};
+static int n_std_cmap = COUNT(std_cmaps);
 
 /*.......................................................................
  * After presenting a warning if the first argument is not the name
@@ -134,6 +203,14 @@ int main(int argc, char *argv[])
  */
   Tk_Main(argc, argv, Demo_AppInit);
   return 0;
+}
+
+/*.......................................................................
+ * This dummy fortran main allows pgtkdemo to be linked with the
+ * f2c-compiled pgplot library.
+ */
+int MAIN__(void)
+{
 }
 
 /*.......................................................................
@@ -218,7 +295,8 @@ static int create_pgdemo(ClientData data, Tcl_Interp *interp, int argc,
 static Pgdemo *new_Pgdemo(Tcl_Interp *interp, char *caller, char *cmd,
 			  char *image_device, char *slice_device)
 {
-  Pgdemo *demo;   /* The new widget object */
+  Pgdemo *demo;        /* The new widget object */
+  int minind, maxind;  /* The min/max color indexes available for images */
   int i;
 /*
  * Allocate the container.
@@ -247,6 +325,7 @@ static Pgdemo *new_Pgdemo(Tcl_Interp *interp, char *caller, char *cmd,
   demo->yb = demo->image_size/2;
   demo->fn = sin_angle_fn;
   demo->have_slice = 0;
+  demo->monochrome = 0;
 /*
  * Attempt to open the image and slice widgets.
  */
@@ -284,6 +363,14 @@ static Pgdemo *new_Pgdemo(Tcl_Interp *interp, char *caller, char *cmd,
  */
   for(i=0; i<demo->slice_size; i++)
     demo->slice[i] = 0.0f;
+/*
+ * If there are fewer than 2 colors available for plotting images,
+ * mark the image as monochrome so that pggray can be asked to
+ * produce a stipple version of the image.
+ */
+  cpgslct(demo->image_id);
+  cpgqcir(&minind, &maxind);
+  demo->monochrome = maxind-minind+1 <= 2;
 /*
  * Create the instance command.
  */
@@ -382,6 +469,8 @@ static int pgdemo_instance_command(ClientData data, Tcl_Interp *interp,
     return pgdemo_slice_command(demo, interp, argc - 2, argv + 2);
   else if(strcmp(command, "redraw_slice") == 0)
     return pgdemo_redraw_slice_command(demo, interp, argc - 2, argv + 2);
+  else if(strcmp(command, "recolor_image") == 0)
+    return pgdemo_recolor_image_command(demo, interp, argc - 2, argv + 2);
 /*
  * Unknown command name.
  */
@@ -573,6 +662,63 @@ static int pgdemo_redraw_slice_command(Pgdemo *demo, Tcl_Interp *interp,
 }
 
 /*.......................................................................
+ * Implement the demo "recolor_image" command. This takes one of a set of
+ * supported color-table names and redisplays the current image with the
+ * specified color table.
+ *
+ * Input:
+ *  demo       Pgdemo *   The demo being serviced.
+ *  interp Tcl_Interp *   The TCL interpreter of the demo.
+ *  argc          int     The number of TCL arguments in argv[].
+ *  argv         char **  An array of 'argc' TCL arguments.
+ *                        argv[0] - A color table name chosen from:
+ *                                   "aips"    -  AIPS tvfiddle color table.
+ *                                   "blue"    -  A blue color table.
+ *                                   "green"   -  A green color table.
+ *                                   "grey"    -  A grey-scale color table.
+ *                                   "heat"    -  The IRAF "heat" color table.
+ *                                   "rainbow" -  A red color table.
+ *                                   "red"     -  A red color table.
+ * Output:
+ *  return        int     TCL_OK    - Normal completion.
+ *                        TCL_ERROR - The interpreter result will contain
+ *                                    the error message.
+ */
+static int pgdemo_recolor_image_command(Pgdemo *demo, Tcl_Interp *interp,
+					int argc, char *argv[])
+{
+  char *name;   /* The name of the desired color table */
+  int i;
+/*
+ * There should only be a single argument.
+ */
+  if(argc != 1) {
+    Tcl_AppendResult(interp, "Missing color-table name.\n", NULL);
+    return TCL_ERROR;
+  };
+/*
+ * Get the color-table name.
+ */
+  name = argv[0];
+/*
+ * Look up the name in our list of supported color tables.
+ */
+  for(i=0; i<n_std_cmap; i++) {
+    Cmap *cmap = std_cmaps + i;
+/*
+ * If the color table is found, install it and return.
+ */
+    if(strcmp(cmap->name, name) == 0) {
+      cpgslct(demo->image_id);
+      cpgctab(cmap->l, cmap->r, cmap->g, cmap->b, cmap->n, 1.0, 0.5);
+      return TCL_OK;
+    };
+  };
+  Tcl_AppendResult(interp, "Unknown color map name \"", name, "\"", NULL);
+  return TCL_ERROR;
+}
+
+/*.......................................................................
  * A sinc(radius) function.
  *
  * Input:
@@ -753,9 +899,17 @@ static int demo_display_image(Pgdemo *demo, int id)
     tr[3] = (demo->ya - 1) * demo->scale;
     tr[4] = 0.0f;
     tr[5] = demo->scale;
-    cpggray(demo->image, demo->image_size, demo->image_size,
-	    1, demo->image_size, 1, demo->image_size, demo->datamax, demo->datamin, tr);
+    if(demo->monochrome) {
+      cpggray(demo->image, demo->image_size, demo->image_size,
+	      1, demo->image_size, 1, demo->image_size, demo->datamax,
+	      demo->datamin, tr);
+    } else {
+      cpgimag(demo->image, demo->image_size, demo->image_size,
+	      1, demo->image_size, 1, demo->image_size, demo->datamin,
+	      demo->datamax, tr);
+    };
   };
+  cpgsci(1);
   cpgbox("BCNST", 0.0f, 0, "BCNST", 0.0f, 0);
   cpglab("X", "Y", "Image display demo");
   return TCL_OK;
