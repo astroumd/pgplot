@@ -40,7 +40,7 @@ static char *prgnam = "pgbind";
 /*
  * Enumerate known system types.
  */
-typedef enum {SYS_NON, SYS_BSD, SYS_CRAY2, SYS_VMS, SYS_MS} Systype;
+typedef enum {SYS_NON, SYS_BSD, SYS_DARWIN, SYS_CRAY2, SYS_VMS, SYS_MS} Systype;
 
 /*
  * Declare a container used to record the specifics of a given
@@ -63,6 +63,10 @@ static Sysattr systable[]={
   {
     "bsd",     SYS_BSD,  "_", 1,  1, 0,
     "BSD f77 template. C string pointers are passed directly, but the length of each string is appended as an extra argument to the FORTRAN procedure call."
+  },
+  {
+    "darwin",  SYS_DARWIN,  "", 1,  1, 0,
+    "DARWIN f77 template. C string pointers are passed directly, but the length of each string is appended as an extra argument to the FORTRAN procedure call."
   },
   {
     "cray2", SYS_CRAY2,   "", 0,  1, 0,
