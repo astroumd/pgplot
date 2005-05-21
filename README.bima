@@ -1,5 +1,5 @@
 This version of PGPLOT has a number of small patches we needed for
-MIRIAD (a BIMA product, now to be run as CARMA). Eventually
+MIRIAD (a BIMA product, now to be run as CARMA) and WIP. Eventually
 these patches will be included in the official Caltech product.
 Until then, feel free to use this version, but be aware there is
 no official support for them.
@@ -19,6 +19,9 @@ The following changes were made:
   for:
       linux intel compiler
       mac/darwin
+
+- a simple pgplot.install script is available within the
+  WIP (master version in NEMO/src/scripts) distribution
 
 The following changes would be nice:
 ------------------------------------
