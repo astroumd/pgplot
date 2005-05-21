@@ -1,0 +1,27 @@
+This version of PGPLOT has a number of small patches we needed for
+MIRIAD (a BIMA product, now to be run as CARMA). Eventually
+these patches will be included in the official Caltech product.
+Until then, feel free to use this version, but be aware there is
+no official support for them.
+
+We keep this version of PGPLOT under CVS.
+
+- Peter Teuben
+
+
+The following changes were made:
+-------------------------------
+
+- a number of un-documented patches (to be documented as I sift
+  through the CVS logs)
+
+- various sys_*/ versions and changes to compilers
+  for:
+      linux intel compiler
+      mac/darwin
+
+The following changes would be nice:
+------------------------------------
+
+- A default PGPLOT_DIR (currently /usr/local/pgplot) be changed
+  to whereever PGPLOT is installed during installation.
