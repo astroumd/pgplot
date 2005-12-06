@@ -5,12 +5,15 @@
 #-----------------------------------------------------------------------
 
 if test $# -lt 1; then
-  echo "Usage: makemake pgplot_dist operating_system configuration"
+  echo "Usage: makemake pgplot_dist operating_system configuration key1=val1 key2=val2 ..."
   echo " pgplot_dist = The top level directory of the PGPLOT distribution."
   echo "               (ie. The directory in which makemake was found!)."
   echo " operating_system = Operating system name (omit this to get a list)."
   echo " configuration = Optional if there is only one for the specified OS."
   echo "                 (Otherwise you will be presented with a list)"
+  echo " keyN=valN   = Optionally up to 4 keyword substutions in the config file"
+  echo "           Common examples:      gcc=gcc32"
+  echo "                                 /X11R6/lib=/X11R6/lib64"
   exit 1
 fi
 
@@ -65,6 +68,7 @@ else
   exit 1
 fi
 
+
 # By default the PGPLOT library is initially placed in the current
 # The demos should be explicitly linked against this library.
 
@@ -75,11 +79,36 @@ CPGPLOT_LIB="-L\`pwd\` -lcpgplot -lpgplot"
 
 DEFAULT_TARGETS="lib grfont.dat prog pgplot.doc"
 
+# Parse remaining parameters, need to be key=val substitutions
+# use it to change the actual name if the flavor of the compiler
+# is known
+# e.g.    linux g77_gcc gcc=gcc33
+#         linux g77_gcc /X11R6/lib=/X11R6/lib64
+
 # Get the configuration variables.
 
-echo "Reading configuration file: $CONFIG"
+if test $# -ge 4; then
+  shift; shift; shift;
+  echo "Creating local_sed.conf for: $*"
+  if test $# -eq 1; then
+    sed s=$1= $CONFIG > local_sed.conf
+  elif test $# -eq 2; then
+    sed s=$1= $CONFIG | sed s=$2= > local_sed.conf
+  elif test $# -eq 3; then
+    sed s=$1= $CONFIG | sed s=$2= | sed s=$3=  > local_sed.conf
+  elif test $# -eq 4; then
+    sed s=$1= $CONFIG | sed s=$2= | sed s=$3= | sed s=$4=  > local_sed.conf
+  else
+    echo "Cannot handle more than 4 substitutions... you'll need to hack the makemake script"
+    echo "and change the help section here"
+    exit 1
+  fi
+  CONFIG=./local_sed.conf
+fi
 
+echo "Reading configuration file: $CONFIG"
 . $CONFIG
+
 
 # List the files that will need to be installed by the person who
 # is running this script.
