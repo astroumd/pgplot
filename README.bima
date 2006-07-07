@@ -23,6 +23,9 @@ The following changes were made:
 - a simple pgplot.install script is available within the
   WIP (master version in NEMO/src/scripts) distribution
 
+- the ps driver does not add  EPSF-3.0 to the first line, in order
+  to not overplot multi-page prints (via CUPS e.g.).
+
 The following changes would be nice:
 ------------------------------------
 
