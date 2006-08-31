@@ -1054,7 +1054,8 @@ griv00.o : $(DRVDIR)/gadef.h $(DRVDIR)/gmdef.h $(DRVDIR)/gphdef.h
 grivas.o : $(DRVDIR)/gadef.h
 grtv00.o : $(DRVDIR)/imdef.h
 pgxwin.o : $(DRVDIR)/pgxwin.h
-pndriv.o : ./png.h ./pngconf.h ./zlib.h ./zconf.h
+#pndriv.o : ./png.h ./pngconf.h ./zlib.h ./zconf.h
+pndriv.o : 
 
 x2driv.o figdisp_comm.o: $(DRVDIR)/commands.h
 
