@@ -6,6 +6,10 @@
 #  The code of the 3 routines was slightly modified from the original
 #  PGPLOT distribution to make the sed command a little more robust.
 #
+#  Notice these files cannot be compiled with gfortran, only with g77.
+#
+#  26-sep-2006    Created                                 Peter Teuben
+#
 #
 
 foreach file (gidriv.f ppdriv.f wddriv.f)
