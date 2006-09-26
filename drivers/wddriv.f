@@ -61,7 +61,7 @@ C
 C Note: for 64-bit operating systems, change the following 
 C declaration to INTEGER*8:
 C
-      INTEGER PIXMAP
+      INTEGER*4 PIXMAP
 C
       SAVE UNIT, IC, CTABLE, NPICT, MAXIDX, BX, BY, PIXMAP, FILENM
       SAVE CDEFLT, STATE
