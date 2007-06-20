@@ -1,0 +1,10 @@
+# Source this file to set up the environment
+# variables that PGPLOT needs in order to run.
+#
+# See pgplot-config.sh (in the same directory as this
+# file) for some comments on the changed meaning of
+# PGPLOT_DIR in this file.
+
+setenv PGPLOT_DIR %libexecdir%
+setenv PGPLOT_FONT %pkgdatadir%/grfont.dat
+setenv PGPLOT_RGB %pkgdatadir%/rgb.txt

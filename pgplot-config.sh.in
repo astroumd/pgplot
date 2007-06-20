@@ -1,0 +1,14 @@
+# Source this file to set up the environment
+# variables that PGPLOT needs in order to run.
+#
+# We set PGPLOT_DIR to the directory containing
+# pgxwin_server, because the X driver only consults
+# that environment variable. This modifies the 
+# semantics of the variable somewhat; it is normally
+# supposed to just point to the general directory where
+# pgplot files live. In our more enlightened,
+# autoconf-ized world, this interpretation is deprecated.
+
+export PGPLOT_DIR=%libexecdir%
+export PGPLOT_FONT=%pkgdatadir%/grfont.dat
+export PGPLOT_RGB=%pkgdatadir%/rgb.txt
