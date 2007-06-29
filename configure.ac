@@ -162,6 +162,8 @@ cpg/Makefile
 drivers/Makefile
 examples/Makefile
 fonts/Makefile
+src/Makefile
+sys/Makefile
 ])
 
 AC_CONFIG_COMMANDS([fix_eps],[chmod +x fix_eps.pl])

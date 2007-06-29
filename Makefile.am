@@ -3,7 +3,7 @@
 # Might include pgdisp in SUBDIRS, but it doesn't build trivially,
 # and I bet no one uses the xdisp driver anyway.
 
-SUBDIRS = fonts drivers . cpg examples applications
+SUBDIRS = fonts drivers sys src . cpg examples applications
 
 EXTRA_DIST = \
  copyright.notice grexec.awk rgb.txt \
@@ -173,3 +173,16 @@ pgplot-config.csh: pgplot-config.csh.in config.status
 	sed -e "s,%libexecdir%,$(libexecdir)," \
 	    -e "s,%pkgdatadir%,$(pkgdatadir)," \
 	    <$< >$@
+
+# MIRIAD documentation. Hackity hack. We need to override
+# some variables because our top_srcdir and package variables
+# are different than what mircommon expects.
+
+include $(top_srcdir)/../../mircommon.mak
+
+doc_catsrc = $(top_srcdir)/../../cat
+doc_prog = $(top_builddir)/../../src/tools/doc
+mirdocdir = $(datadir)/miriad/doc
+
+DOCINPUTS = $(libpgplot_la_SOURCES)
+include $(top_srcdir)/../../mirdoc.mak
