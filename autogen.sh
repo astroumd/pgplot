@@ -2,7 +2,12 @@
 #
 # FIXME: check for correct versions of autotools
 
-libtoolize --copy --force
+export LIBTOOLIZE=libtoolize
+if test -x /usr/bin/glibtoolize; then
+  export LIBTOOLIZE=glibtoolize
+fi
+
+$LIBTOOLIZE --copy --force
 aclocal
 #autoheader
 autoconf
