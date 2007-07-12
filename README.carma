@@ -1,8 +1,12 @@
 This version of PGPLOT has a number of small patches we needed for
-MIRIAD (a BIMA product, now to be run as CARMA) and WIP. Eventually
+MIRIAD (a BIMA product, now run as CARMA) and WIP. Eventually
 these patches will be included in the official Caltech product.
 Until then, feel free to use this version, but be aware there is
 no official support for them.
+
+Also note there is a cloned version of PGPLOT available within Starlink,
+the ATNF/MIRIAD may also keep some subtle differences in their RCS
+tree.
 
 We keep this version of PGPLOT under CVS.
 
@@ -25,6 +29,13 @@ The following changes were made:
 
 - the ps driver does not add  EPSF-3.0 to the first line, in order
   to not overplot multi-page prints (via CUPS e.g.).
+
+- Peter Williams (pkwill@astro.berkeley.edu) added autotools support,
+  he also distributes this from his own webpage as pgplot-remix; see
+  e.g.  http://www.newton.cx/~peter/software/pgplot-remix-5.2.2.0.tar.gz
+  The CVS based CARMA distribution of this remix *ought* to be the
+  same, but during the development (summer 2007) there may be some
+  lag in the CVS version.
 
 The following changes would be nice:
 ------------------------------------
