@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # FIXME: check for correct versions of autotools
 
