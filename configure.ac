@@ -44,6 +44,9 @@ case $host_os in
   darwin*)
     SHLIB_LDFLAGS="-dynamic -Wl,-single_module"
     ;;
+  solaris2.10*)
+    AC_CHECK_LIB([m],[cos])
+    ;;
   *)
     SHLIB_LDFLAGS=""
     ;;
