@@ -68,6 +68,12 @@ XWDRIV_CFLAGS =
 XWDRIV_SERVER = 
 endif
 
+if PNDRIV_ENABLED
+PNDRIV_SOURCES = drivers/pndriv.c
+else
+PNDRIV_SOURCES = 
+endif
+
 if PSDRIV_ENABLED
 PSDRIV_SOURCES = drivers/psdriv.f
 else
@@ -145,7 +151,7 @@ libpgplot_la_SOURCES = \
  sys/gruser.c \
  \
  drivers/nudriv.f $(TTDRIV_SOURCES) $(XWDRIV_SOURCES) \
- $(PSDRIV_SOURCES)
+ $(PNDRIV_SOURCES) $(PSDRIV_SOURCES)
 
 # pgxwin_server
 

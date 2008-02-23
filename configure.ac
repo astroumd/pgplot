@@ -130,6 +130,34 @@ dnl X_PRE_LIBS
 AC_SUBST(XWDRIV_DRVFLAG)
 AC_SUBST(MAYBE_XWDRIV_LIBS)
 
+dnl PNDRIV, the Portable Network Graphics driver.
+
+AC_ARG_ENABLE(png,
+[  --disable-png    Do not use the Portable Network Graphics output driver.],
+[],[enableval=yes])
+
+AC_MSG_CHECKING([whether to use the Portable Network Graphics output driver])
+if test x"$enableval" = xyes ; then
+   AC_MSG_RESULT([yes])
+   AC_CHECK_LIB([png],[png_init_io],[
+      AM_CONDITIONAL([PNDRIV_ENABLED], true)
+      PNDRIV_MESSAGE="enabled"
+      PNDRIV_DRVFLAG=" "
+      LIBS="-lpng ${LIBS}"
+   ],[
+      AM_CONDITIONAL([PNDRIV_ENABLED], false)
+      PNDRIV_MESSAGE="disabled (libpng not found)"
+      PNDRIV_DRVFLAG="!"
+   ])
+else
+   AC_MSG_RESULT([no; disabled by user])
+   AM_CONDITIONAL([PNDRIV_ENABLED], false)
+   PNDRIV_MESSAGE="disabled (by user)"
+   PNDRIV_DRVFLAG="!"
+fi
+
+AC_SUBST(PNDRIV_DRVFLAG)
+
 dnl PSDRIV, the Postscript driver.
 
 AC_ARG_ENABLE(postscript,
@@ -180,6 +208,7 @@ echo "PGPLOT Output driver configuration summary:"
 echo
 echo "         Tektronix terminal: $TTDRIV_MESSAGE"
 echo "                  X Windows: $XWDRIV_MESSAGE"
+echo "  Portable Network Graphics: $PNDRIV_MESSAGE"
 echo "                 Postscript: $PSDRIV_MESSAGE"
 echo "   All other legacy drivers: disabled"
 echo
