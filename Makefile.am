@@ -8,7 +8,7 @@ SUBDIRS = fonts drivers sys src . cpg examples applications
 EXTRA_DIST = \
  copyright.notice grexec.awk rgb.txt \
  pgplot-config.sh.in pgplot-config.csh.in \
- README.bima readme_fix_eps.txt \
+ README.carma readme_fix_eps.txt \
  ver500.txt ver501.txt ver502.txt ver503.txt \
  ver510.txt ver511.txt ver520.txt ver521.txt \
  ver522.txt
