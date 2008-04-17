@@ -1,6 +1,5 @@
 #!/bin/bash
 #
-# FIXME: check for correct versions of autotools
 
 if test "x$LIBTOOLIZE" = x; then
   export LIBTOOLIZE=libtoolize
@@ -14,4 +13,4 @@ $LIBTOOLIZE --copy --force
 aclocal
 #autoheader
 autoconf
-automake --add-missing --copy
+automake --add-missing --copy --warnings=obsolete  --warnings=gnu --warnings=unsupported --warnings=no-syntax --warnings=no-portability
