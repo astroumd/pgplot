@@ -311,6 +311,7 @@ C-----------------------------------------------------------------------
       PARAMETER (PI=3.14159265359)
       PARAMETER (RPDEG=PI/180.0)
       REAL B, L, XWORLD, YWORLD
+      Z = 0.
       B = 2.0*(Y-46.0)*RPDEG
       L = 2.0*(X-91.0)*RPDEG
       CALL AITOFF(B, L, XWORLD, YWORLD)
@@ -517,6 +518,7 @@ C-----------------------------------------------------------------------
       SAVE I
       DATA I /0/
 C
+      Z = 0.
       I = MOD(I+1,16)
       IF (VISBLE.EQ.0) THEN
           I = 0
@@ -565,7 +567,7 @@ C
          DO 10 J=1,NY     
             Y = TR(4) + J*TR(6)
             Z(I,J) = (1.0-MU)*(2.0/SQRT((X-MU)**2+Y**2)+(X-MU)**2+Y**2)   
-     *           + MU*(2.0/SQRT((X+1.0-MU)**2+Y**2)+(X+1.0-MU)**2+Y**2)      
+     *      + MU*(2.0/SQRT((X+1.0-MU)**2+Y**2)+(X+1.0-MU)**2+Y**2)      
  10      CONTINUE                                   
    20 CONTINUE                                                          
 C
