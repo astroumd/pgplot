@@ -20,6 +20,8 @@ C-----------------------------------------------------------------------
       INTRINSIC MOD, NINT, REAL, LOG
 C-----------------------------------------------------------------------
 C
+      VALUE = 0.
+
       IF (MODE.LT.0 .OR. MODE.GT.2) RETURN
 C
 C Initialize random-number generator (based on RAN2 of Press et al.,

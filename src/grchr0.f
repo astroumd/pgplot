@@ -43,6 +43,11 @@ C-----------------------------------------------------------------------
       REAL     DX, DY, XORG, YORG
       REAL     XC(VECSIZ), YC(VECSIZ), XT, YT
 C
+      XMIN = 0.
+      XMAX = 0.
+      YMIN = 0.
+      YMAX = 0.
+
       IF (LEN(STRING).LE.0) RETURN
 C
 C Compute scaling and orientation.

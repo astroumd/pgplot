@@ -34,6 +34,12 @@ C               on edge [Remko Scharroo]
 C-----------------------------------------------------------------------
       INTEGER I
       REAL FX, FY, SX, SY
+
+      SX = 0.
+      SY = 0.
+      FX = 0.
+      FY = 0.
+
 C
       NOUT = 0
       DO 100 I=1,N

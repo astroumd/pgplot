@@ -19,6 +19,9 @@ C-----------------------------------------------------------------------
       INCLUDE  'pgplot.inc'
       INTEGER  K
       REAL     X,XX,Y,YY,Z
+
+      Z = 0.
+
 C
       XX = TRANS(1) + TRANS(2)*X + TRANS(3)*Y
       YY = TRANS(4) + TRANS(5)*X + TRANS(6)*Y

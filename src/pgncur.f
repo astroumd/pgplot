@@ -46,6 +46,9 @@ C-----------------------------------------------------------------------
       REAL     DELTA, XP, YP, XPHYS, YPHYS
       REAL     XMIN, XIP, YIP
       REAL     XBLC, XTRC, YBLC, YTRC
+
+      J = 0
+
 C
 C Check that PGPLOT is in the correct state.
 C

@@ -27,6 +27,8 @@ C-----------------------------------------------------------------------
       INTEGER  I, TB
       SAVE     I
       DATA     I /0/
+
+      Z = 0.
 C
 C     -- transform to world coordinates
       XX = TRANS(1) + TRANS(2)*X + TRANS(3)*Y
