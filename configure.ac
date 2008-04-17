@@ -3,7 +3,7 @@ dnl with the patches from MIRIAD applied.
 
 AC_INIT(pgplot-miriad-remix, 5.2.2.1, miriad-dev@astro.berkeley.edu)
 AC_CONFIG_SRCDIR([src/pgwnad.f])
-AM_INIT_AUTOMAKE([-Wall foreign])
+AM_INIT_AUTOMAKE([--warnings=obsolete  --warnings=gnu --warnings=unsupported --warnings=no-syntax --warnings=no-portability foreign])
 dnl AM_CONFIG_HEADER([config.h])
 
 AM_MAINTAINER_MODE

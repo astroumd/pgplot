@@ -13,4 +13,4 @@ $LIBTOOLIZE --copy --force
 aclocal
 #autoheader
 autoconf
-automake --add-missing --copy --warnings=obsolete  --warnings=gnu --warnings=unsupported --warnings=no-syntax --warnings=no-portability
+automake --add-missing --copy
