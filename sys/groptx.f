@@ -16,7 +16,7 @@ C-----------------------------------------------------------------------
 
       INTEGER IER
 
-      DEFNAM = ''
+c      DEFNAM = ''
 
       IF (MODE.EQ.1) THEN
           OPEN (UNIT=UNIT, FILE=NAME, STATUS='UNKNOWN', IOSTAT=IER)

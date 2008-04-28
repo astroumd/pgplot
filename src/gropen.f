@@ -51,7 +51,7 @@ C-----------------------------------------------------------------------
       CHARACTER*128 FFILE,CHR
 
 C Faux usage of DUMMY to avoid warning on compile
-      DUMMY = 0
+C      DUMMY = 0
 
 C
 C Initialize GRPCKG; read font file (if necessary).

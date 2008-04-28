@@ -15,7 +15,7 @@ C-----------------------------------------------------------------------
       REAL Z0, X, Y, STARTX, STARTY
       EXTERNAL PLOT
 C
-      MY = 0
+c      MY = 0
 
       I = IS
       J = JS
