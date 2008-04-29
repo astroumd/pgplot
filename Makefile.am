@@ -58,6 +58,12 @@ else
 TTDRIV_SOURCES = 
 endif
 
+if GIDRIV_ENABLED
+GIDRIV_SOURCES = drivers/gidriv.f
+else
+GIDRIV_SOURCES = 
+endif
+
 if XWDRIV_ENABLED
 XWDRIV_SOURCES = drivers/xwdriv.c
 XWDRIV_CFLAGS = $(X_CFLAGS)
@@ -150,7 +156,7 @@ libpgplot_la_SOURCES = \
  sys/groptx.f sys/grsy00.f sys/grtermio.c sys/grtrml.f sys/grtter.f \
  sys/gruser.c \
  \
- drivers/nudriv.f $(TTDRIV_SOURCES) $(XWDRIV_SOURCES) \
+ drivers/nudriv.f $(TTDRIV_SOURCES) $(GIDRIV_SOURCES) $(XWDRIV_SOURCES) \
  $(PNDRIV_SOURCES) $(PSDRIV_SOURCES)
 
 # pgxwin_server

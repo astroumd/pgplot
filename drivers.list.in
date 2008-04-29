@@ -1,4 +1,5 @@
 ! PGPLOT drivers.
+! @EDIT_WARNING@
 !------------------------------------------------------------------------------
 ! To configure PGPLOT, ensure that drivers you do not want are
 ! commented out (place ! in column 1). N.B. Many device-drivers are
@@ -15,9 +16,8 @@
 ! EXDRIV 1 /EXCL      Talaris/EXCL printers, landscape
 ! EXDRIV 2 /EXCL      Talaris/EXCL printers, portrait
 ! GCDRIV 0 /GENICOM   Genicom 4410 dot-matrix printer, landscape
-!             Caution: use of GIDRIV may require a license from Unisys:
-! GIDRIV 1 /GIF       GIF-format file, landscape
-! GIDRIV 2 /VGIF      GIF-format file, portrait
+@GIDRIV_DRVFLAG@ GIDRIV 1 /GIF       GIF-format file, landscape
+@GIDRIV_DRVFLAG@ GIDRIV 2 /VGIF      GIF-format file, portrait
 ! GLDRIV 1 /HPGL      Hewlett-Packard HP-GL plotters, landscape		Std F77
 ! GLDRIV 2 /VHPGL     Hewlett-Packard HP-GL plotters, portrait		Std F77
 ! GODRIV 0 /GOC       GOC Sigma T5670 terminal				VMS 
