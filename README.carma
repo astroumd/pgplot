@@ -32,7 +32,8 @@ The following changes were made:
 
 - Peter Williams (pkwill@astro.berkeley.edu) added autotools support,
   he also distributes this from his own webpage as pgplot-remix; see
-  e.g.  http://www.newton.cx/~peter/software/pgplot-remix-5.2.2.0.tar.gz
+     http://www.newton.cx/~peter/software/pgplot-remix-5.2.2.0.tar.gz
+  (check version numbers, they may change obviously)
   The CVS based CARMA distribution of this remix *ought* to be the
   same, but during the development (summer 2007) there may be some
   lag in the CVS version.
