@@ -18,3 +18,5 @@ foreach file (gidriv.f ppdriv.f wddriv.f)
   mv $file $o
   sed s/'INTEGER\*4 PIXMAP'/'INTEGER*8 PIXMAP'/ $o > $file
 end
+
+echo 'Old style patch:   mirboss ; mir.install pgplot'
