@@ -18,3 +18,12 @@ pgxwin_server
 *.lo
 *.la
 *_ds
+Makefile
+Makefile.in
+*.lo
+.deps
+.libs
+_deps
+_libs
+*_ds
+docwork

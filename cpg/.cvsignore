@@ -1,0 +1,13 @@
+Makefile
+Makefile.in
+*.lo
+.deps
+.libs
+_deps
+_libs
+cpg*.c
+cpgplot.h
+libcpgplot.la
+pgbind
+cpgdemo
+pgbind.stamp

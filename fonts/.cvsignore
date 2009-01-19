@@ -1,0 +1,8 @@
+Makefile
+Makefile.in
+.deps
+.libs
+_deps
+_libs
+grfont.dat
+pgpack
