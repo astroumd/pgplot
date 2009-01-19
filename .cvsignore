@@ -5,14 +5,9 @@ autom4te.cache
 configure
 config.log
 config.status
-drivers.list
 drivers.list.cur
 grexec.f
-fix_eps.pl
 libtool
-makedoc
-makehtml
-maketex
 pgplot-config.csh
 pgplot-config.sh
 pgplot.doc
