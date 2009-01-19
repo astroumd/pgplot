@@ -222,11 +222,11 @@ AC_SUBST(EDIT_WARNING)
 dnl Done checking for drivers.
 
 AC_CONFIG_FILES([
-drivers.list
-fix_eps.pl
-makedoc
-makehtml
-maketex
+autodrivers.list
+autofix_eps.pl
+automakedoc
+automakehtml
+automaketex
 Makefile
 applications/Makefile
 cpg/Makefile

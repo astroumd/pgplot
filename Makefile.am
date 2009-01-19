@@ -19,7 +19,19 @@ libexec_PROGRAMS = $(XWDRIV_SERVER)
 
 pkgdata_DATA = \
  rgb.txt pgplot-routines.tex pgplot.html pgplot.doc \
- fix_eps.pl
+ autofix_eps.pl
+
+# Our generated version of fix_eps.pl is called autofix_eps.pl,
+# to not overwrite the CVS-stored file that's used in the 
+# classic build system. On installation, however, we link 
+# autofix_eps.pl to fix_eps.pl, to maintain compatibility.
+
+install-exec-hook:
+	cd $(DESTDIR)$(pkgdatadir) && rm -f fix_eps.pl && \
+	  $(LN_S) autofix_eps.pl fix_eps.pl
+
+uninstall-hook:
+	rm -f $(DESTDIR)$(pkgdatadir)/fix_eps.pl
 
 # These go into pkglibdir since they point to the directory
 # that pgxwin_server lives in, and hence these scripts are *not*
@@ -31,23 +43,23 @@ pkglib_DATA = \
 CLEANFILES = \
  grexec.f pgplot-routines.tex pgplot.html pgplot.doc \
  pgplot-config.sh pgplot-config.csh \
- drivers.list.cur
+ autodrivers.list.cur
 
 # Driver dispatcher file. We perform some convolutions here to
 # not unneccessarily update grexec.f, since doing so will
 # force us to rebuild everything. (An unneccessary update might
 # be cause by config.status being executed.)
 
-grexec.f: grexec.awk drivers.list.cur
-	$(AWK) -f $< drivers.list.cur >$@
+grexec.f: grexec.awk autodrivers.list.cur
+	$(AWK) -f $< autodrivers.list.cur >$@
 
-drivers.list.cur: drivers.list
-	if test ! -f drivers.list.cur ; then \
-		cp $< drivers.list.cur ; \
-	elif cmp -s $< drivers.list.cur ; then \
+autodrivers.list.cur: autodrivers.list
+	if test ! -f autodrivers.list.cur ; then \
+		cp $< autodrivers.list.cur ; \
+	elif cmp -s $< autodrivers.list.cur ; then \
 		: ; \
 	else \
-		cp $< drivers.list.cur ; \
+		cp $< autodrivers.list.cur ; \
 	fi
 
 # Conditional driver sources.
@@ -167,14 +179,14 @@ pgxwin_server_SOURCES = drivers/pgxwin_server.c
 
 # Data
 
-pgplot-routines.tex: maketex $(PG_SOURCES)
-	$(PERL) $< $(filter-out maketex,$^) >$@
+pgplot-routines.tex: automaketex $(PG_SOURCES)
+	$(PERL) $< $(filter-out automaketex,$^) >$@
 
-pgplot.html: makehtml $(PG_SOURCES)
-	$(PERL) $< $(filter-out makehtml,$^) >$@
+pgplot.html: automakehtml $(PG_SOURCES)
+	$(PERL) $< $(filter-out automakehtml,$^) >$@
 
-pgplot.doc: makedoc $(PG_SOURCES)
-	$(SHELL) $< $(filter-out makedoc,$^) >$@
+pgplot.doc: automakedoc $(PG_SOURCES)
+	$(SHELL) $< $(filter-out automakedoc,$^) >$@
 
 pgplot-config.sh: pgplot-config.sh.in config.status
 	sed -e "s,%libexecdir%,$(libexecdir)," \
