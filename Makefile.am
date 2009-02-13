@@ -1,5 +1,7 @@
 # Process this file with 'automake' to generate 'Makefile.in'
 
+ACLOCAL_AMFLAGS = -I .
+
 # Might include pgdisp in SUBDIRS, but it doesn't build trivially,
 # and I bet no one uses the xdisp driver anyway.
 
