@@ -239,7 +239,7 @@ src/Makefile
 sys/Makefile
 ])
 
-AC_CONFIG_COMMANDS([fix_eps],[chmod +x fix_eps.pl])
+AC_CONFIG_COMMANDS([fix_eps],[chmod +x autofix_eps.pl])
 
 AC_OUTPUT
 
