@@ -13,6 +13,11 @@ automakehtml
 automaketex
 grexec.f
 libtool
+libtool.m4
+ltoptions.m4
+ltsugar.m4
+ltversion.m4
+lt~obsolete.m4
 pgplot-config.csh
 pgplot-config.sh
 pgplot.doc
