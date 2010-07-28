@@ -6,8 +6,7 @@ noinst_PROGRAMS = pgpack
 pgpack_SOURCES = pgpack.f
 
 grfont.dat: grfont.txt pgpack
-	rm -f $@
-	./pgpack <$<
+	$(AM_V_GEN)rm -f $@ ; ./pgpack <$<
 
 EXTRA_DIST = aaaread.me grfont.txt pgdchar.f pgunpack.f
 CLEANFILES = grfont.dat

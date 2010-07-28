@@ -53,10 +53,10 @@ CLEANFILES = \
 # be cause by config.status being executed.)
 
 grexec.f: grexec.awk autodrivers.list.cur
-	$(AWK) -f $< autodrivers.list.cur >$@
+	$(AM_V_GEN)$(AWK) -f $< autodrivers.list.cur >$@
 
 autodrivers.list.cur: autodrivers.list
-	if test ! -f autodrivers.list.cur ; then \
+	$(AM_V_at)if test ! -f autodrivers.list.cur ; then \
 		cp $< autodrivers.list.cur ; \
 	elif cmp -s $< autodrivers.list.cur ; then \
 		: ; \
@@ -182,23 +182,23 @@ pgxwin_server_SOURCES = drivers/pgxwin_server.c
 # Data
 
 pgplot-routines.tex: automaketex $(PG_SOURCES)
-	$(PERL) $< $(filter-out automaketex,$^) >$@
+	$(AM_V_GEN)$(PERL) $< $(filter-out automaketex,$^) >$@
 
 pgplot.html: automakehtml $(PG_SOURCES)
-	$(PERL) $< $(filter-out automakehtml,$^) >$@
+	$(AM_V_GEN)$(PERL) $< $(filter-out automakehtml,$^) >$@
 
 pgplot.doc: automakedoc $(PG_SOURCES)
-	$(SHELL) $< $(filter-out automakedoc,$^) >$@
+	$(AM_V_GEN)$(SHELL) $< $(filter-out automakedoc,$^) >$@
 
 pgplot-config.sh: pgplot-config.sh.in config.status
-	sed -e "s,%libexecdir%,$(libexecdir)," \
-	    -e "s,%pkgdatadir%,$(pkgdatadir)," \
-	    <$< >$@
+	$(AM_V_GEN)sed -e "s,%libexecdir%,$(libexecdir)," \
+	               -e "s,%pkgdatadir%,$(pkgdatadir)," \
+	               <$< >$@
 
 pgplot-config.csh: pgplot-config.csh.in config.status
-	sed -e "s,%libexecdir%,$(libexecdir)," \
-	    -e "s,%pkgdatadir%,$(pkgdatadir)," \
-	    <$< >$@
+	$(AM_V_GEN)sed -e "s,%libexecdir%,$(libexecdir)," \
+	               -e "s,%pkgdatadir%,$(pkgdatadir)," \
+	               <$< >$@
 
 # MIRIAD documentation. Hackity hack. We need to override
 # some variables because our top_srcdir and package variables

@@ -74,8 +74,7 @@ pgbind_SOURCES = pgbind.c
 $(pgbind_outputs): pgbind.stamp
 
 pgbind.stamp: pgbind $(bound_files)
-	./pgbind $(PGBIND_FLAGS) -h -w $(filter-out pgbind,$^)
-	touch $@
+	$(AM_V_GEN)./pgbind $(PGBIND_FLAGS) -h -w $(filter-out pgbind,$^) ; touch $@
 
 CLEANFILES = pgbind.stamp $(pgbind_outputs)
 

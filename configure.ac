@@ -1,11 +1,14 @@
 dnl Configure script retroactively applied to pgplot 5.2.2,
 dnl with the patches from MIRIAD applied.
 
+AC_PREREQ(2.59)
 AC_INIT(pgplot-miriad-remix, 5.2.2.1, miriad-dev@astro.berkeley.edu)
+AC_REVISION([$Revision$])
+
 AC_CONFIG_SRCDIR([src/pgwnad.f])
 AC_CONFIG_MACRO_DIR([.])
-AM_INIT_AUTOMAKE([--warnings=obsolete  --warnings=gnu --warnings=unsupported --warnings=no-syntax --warnings=no-portability foreign])
-dnl AM_CONFIG_HEADER([config.h])
+AM_INIT_AUTOMAKE([-Wobsolete  -Wgnu -Wunsupported -Wno-syntax -Wno-portability
+                  foreign silent-rules])
 
 AM_MAINTAINER_MODE
 AC_PROG_AWK
