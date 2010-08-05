@@ -89,4 +89,4 @@ libcpgplot_la_LDFLAGS = $(SHLIB_LDFLAGS)
 # Demo
 
 cpgdemo_SOURCES = cpgdemo.c cpgplot.h
-cpgdemo_LDADD = ../libpgplot.la libcpgplot.la
+cpgdemo_LDADD = ../libpgplot.la libcpgplot.la -lm
