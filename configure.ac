@@ -8,7 +8,7 @@ AC_REVISION([$Revision$])
 AC_CONFIG_SRCDIR([src/pgwnad.f])
 AC_CONFIG_MACRO_DIR([.])
 AM_INIT_AUTOMAKE([-Wobsolete  -Wgnu -Wunsupported -Wno-syntax -Wno-portability
-                  foreign silent-rules])
+                  foreign])
 
 AM_MAINTAINER_MODE
 AC_PROG_AWK
