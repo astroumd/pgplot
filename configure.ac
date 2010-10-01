@@ -7,7 +7,9 @@ AC_REVISION([$Revision$])
 
 AC_CONFIG_SRCDIR([src/pgwnad.f])
 AC_CONFIG_MACRO_DIR([.])
-AM_INIT_AUTOMAKE([-Wobsolete  -Wgnu -Wunsupported -Wno-syntax -Wno-portability
+dnl As far as I can tell we don't need Automake newer than 1.9, and
+dnl could probably even get away with earlier versions.
+AM_INIT_AUTOMAKE([1.9 -Wobsolete -Wgnu -Wunsupported -Wno-syntax -Wno-portability
                   foreign])
 
 AM_MAINTAINER_MODE
