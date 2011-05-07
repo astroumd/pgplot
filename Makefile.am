@@ -104,7 +104,6 @@ endif
 
 libpgplot_la_CFLAGS = $(XWDRIV_CFLAGS)
 libpgplot_la_LIBADD = $(MAYBE_XWDRIV_LIBS)
-libpgplot_la_LDFLAGS = $(SHLIB_LDFLAGS)
 
 PG_SOURCES = \
  src/pgadvance.f src/pgarro.f src/pgask.f src/pgaxis.f src/pgaxlg.f \

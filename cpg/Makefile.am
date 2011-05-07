@@ -84,7 +84,6 @@ CLEANFILES = pgbind.stamp $(pgbind_outputs)
 
 nodist_libcpgplot_la_SOURCES = $(pgbind_outputs)
 libcpgplot_la_LIBADD = ../libpgplot.la $(pgbind_objects)
-libcpgplot_la_LDFLAGS = $(SHLIB_LDFLAGS)
 
 # Demo
 

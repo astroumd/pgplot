@@ -60,21 +60,13 @@ AC_LANG_POP([Fortran 77])
 AC_SUBST(val_ok)
 
 
-dnl Some extra flag futzing that is apparently needed for OS X.
+dnl Platform-specific flag futzing.
 
 case $host_os in
-  darwin*)
-    SHLIB_LDFLAGS="-dynamic -Wl,-single_module"
-    ;;
   solaris2.10*)
     AC_CHECK_LIB([m],[cos])
     ;;
-  *)
-    SHLIB_LDFLAGS=""
-    ;;
 esac
-
-AC_SUBST(SHLIB_LDFLAGS)
 
 dnl Check for Perl, needed for makehtml and maketex and fix_eps.pl
 
