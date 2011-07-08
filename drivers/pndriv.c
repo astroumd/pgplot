@@ -499,6 +499,10 @@ static void open_new_device(char *file, int length, float *id, float *err, int m
 
   make_device_active(devnum);
 
+
+  ACTIVE_DEVICE->error  = false;
+  ACTIVE_DEVICE->pixmap = 0x0;
+
   ACTIVE_DEVICE->filename[length] = '\0';
   strncpy(ACTIVE_DEVICE->filename,file,length);
 
