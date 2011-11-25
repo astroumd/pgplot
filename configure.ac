@@ -17,14 +17,13 @@ AC_PROG_AWK
 AC_PROG_F77
 AC_PROG_FC
 AM_PROG_LIBTOOL
+
+dnl PG_PPU should be deprecated in favor of AC_F77_WRAPPERS, but I want
+dnl to touch the source code as little as possible.  There is also
+dnl AC_F77_DUMMY_MAIN that at the moment does not appear to be
+dnl necessary, but should be kept in mind.
+
 AC_F77_LIBRARY_LDFLAGS
-
-dnl This should be deprecated in favor of AC_F77_WRAPPERS, but I
-dnl want to touch the source code as little as possible.
-dnl There are also AC_F77_DUMMY_MAIN and AC_F77_LIBRARY_LDFLAGS
-dnl that at the moment do not appear to be necessary, but should
-dnl be kept in mind.
-
 AC_DEFINE([PG_PPU], [1], [Append underscores to C symbol names])
 
 dnl Libtool treats gfortran as an F77 implementation even though
@@ -40,15 +39,12 @@ AC_SUBST(AM_CFLAGS)
 AC_SUBST(AM_FCFLAGS)
 AC_SUBST(AM_FFLAGS)
 
-dnl If using G77, use this flag
-
-if test x"$G77" = xyes ; then
-   AM_FFLAGS="$AM_FFLAGS -fno-backslash"
-fi
-
-dnl test if fortran accepts the %VAL() construct for GIF driver default
+dnl Some compiler checks
 
 AC_LANG_PUSH([Fortran 77])
+AX_CHECK_COMPILE_FLAG([-fno-backslash], [AM_FFLAGS="$AM_FFLAGS -fno-backslash"])
+
+dnl %val() needed for GIF driver
 AC_MSG_CHECKING([Whether the fortran compiler handles %val()])
 AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
 	subroutine foo
