@@ -17,6 +17,7 @@ AC_PROG_AWK
 AC_PROG_F77
 AC_PROG_FC
 AM_PROG_LIBTOOL
+AC_F77_LIBRARY_LDFLAGS
 
 dnl This should be deprecated in favor of AC_F77_WRAPPERS, but I
 dnl want to touch the source code as little as possible.

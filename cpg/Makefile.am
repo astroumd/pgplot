@@ -88,4 +88,4 @@ libcpgplot_la_LIBADD = ../libpgplot.la $(pgbind_objects)
 # Demo
 
 cpgdemo_SOURCES = cpgdemo.c cpgplot.h
-cpgdemo_LDADD = ../libpgplot.la libcpgplot.la -lm
+cpgdemo_LDADD = ../libpgplot.la libcpgplot.la $(FLIBS) -lm
