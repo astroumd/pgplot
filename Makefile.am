@@ -27,8 +27,10 @@ pkgdata_DATA = \
 # to not overwrite the CVS-stored file that's used in the 
 # classic build system. On installation, however, we link 
 # autofix_eps.pl to fix_eps.pl, to maintain compatibility.
+# The scripts are textual and platform-independent so the
+# correct hook is install-data-hook, not install-exec-hook.
 
-install-exec-hook:
+install-data-hook:
 	cd $(DESTDIR)$(pkgdatadir) && rm -f fix_eps.pl && \
 	  $(LN_S) autofix_eps.pl fix_eps.pl
 
