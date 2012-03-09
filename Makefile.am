@@ -42,8 +42,8 @@ uninstall-hook:
 # arch-independent.
 
 # Automake >~ 1.11.3 doesn't like DATA in pkglibdir (??)
-mypkglibdir = $(pkglibdir) 
-pkglib_DATA = \
+mypkglibdir = $(pkglibdir)
+mypkglib_DATA = \
  pgplot-config.sh pgplot-config.csh
 
 CLEANFILES = \
