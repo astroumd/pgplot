@@ -64,6 +64,7 @@ bound_files = \
 
 pgbind_outputs = cpgplot.h cpgunsa.c $(patsubst ../src/pg%.f,cpg%.c,$(bound_files))
 pgbind_objects = $(patsubst ../src/pg%.f,cpg%.lo,$(bound_files))
+BUILT_SOURCES = $(pgbind_outputs)
 
 # pgbind helper
 
@@ -87,5 +88,5 @@ libcpgplot_la_LIBADD = ../libpgplot.la $(pgbind_objects)
 
 # Demo
 
-cpgdemo_SOURCES = cpgdemo.c cpgplot.h
+cpgdemo_SOURCES = cpgdemo.c
 cpgdemo_LDADD = ../libpgplot.la libcpgplot.la $(FLIBS) -lm
