@@ -33,7 +33,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <setjmp.h>
 #include <png.h>
 
 #ifdef VMS
