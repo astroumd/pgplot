@@ -214,4 +214,7 @@ doc_prog = $(top_builddir)/../../src/tools/doc
 mirdocdir = $(datadir)/miriad/doc
 
 DOCINPUTS = $(libpgplot_la_SOURCES)
-include $(top_srcdir)/../../mirdoc.mak
+include $(top_srcdir)/../../mirdoc_noprog.mak
+
+$(doc_prog):
+	$(MAKE) -C $(dir $@) $(notdir $@)
