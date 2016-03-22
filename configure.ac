@@ -10,7 +10,7 @@ AC_CONFIG_MACRO_DIR([.])
 dnl As far as I can tell we don't need Automake newer than 1.9, and
 dnl could probably even get away with earlier versions.
 AM_INIT_AUTOMAKE([1.9 -Wobsolete -Wgnu -Wunsupported -Wno-syntax -Wno-portability
-                  foreign])
+                  foreign subdir-objects])
 
 AM_MAINTAINER_MODE
 AC_PROG_AWK
