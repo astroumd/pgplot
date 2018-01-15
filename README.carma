@@ -19,7 +19,8 @@ but that's 5.3.0  [now temporarily unavailable]
 
 
 
-We keep this version of PGPLOT under GIT in https://github.com/astroumd/pgplot
+We keep this version of PGPLOT under GIT in https://github.com/teuben/pgplot,
+but the official version is in https://github.com/astroumd/pgplot
 
 - Peter Teuben
 
