@@ -9,14 +9,17 @@ as possible, at last check version 5.2.2 (26-feb-2001).
 
 Also note there is a cloned version of PGPLOT available within Starlink,
 the ATNF/MIRIAD may also keep some subtle differences in their RCS
-tree.
+tree.  There is also a PGPLOT clone in the 'giz' package. On for example
+Ubuntu you might find this is your default pgplot.
+See  http://giza.sourceforge.net
 
 CASA uses 5.3.1, with some extra routines. There is a newer version via TJP
 http://www.astro.caltech.edu/~tjp/npgplot/downloads/pgplot530.tar.gz
-but that's 5.3.0
+but that's 5.3.0  [now temporarily unavailable]
 
 
-We keep this version of PGPLOT under CVS.
+
+We keep this version of PGPLOT under GIT in https://github.com/astroumd/pgplot
 
 - Peter Teuben
 
