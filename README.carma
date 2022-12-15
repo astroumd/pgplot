@@ -1,3 +1,6 @@
+NOTE:   this is not an official PGPLOT code repo, but there are forces to make an official one.
+
+
 This version of PGPLOT has a number of small patches we needed for
 MIRIAD (a BIMA product, now run as CARMA) and WIP. Eventually
 these patches will be included in the official Caltech product.
