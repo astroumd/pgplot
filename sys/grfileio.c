@@ -13,12 +13,18 @@
  * 09-Nov-94 - Tidied and ported to Cray [mcs] (untested).
  * 10-Nov-94 - Added GRFCH() routine to write FORTRAN CHARACTER sub-strings.
  * 19-Jun-95 - File name "-" means stdout.
+ *  9-feb-2024    added string.h and unistd.h for gcc-14
  *-------
  */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <fcntl.h>
+#include <string.h>  
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 
 #ifdef PG_PPU
