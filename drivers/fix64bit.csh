@@ -9,6 +9,7 @@
 #  Notice these files cannot be compiled with gfortran, only with g77.
 #
 #  26-sep-2006    Created                                 Peter Teuben
+#  24-feb-2024    Default in the astroumd/pgplot is now 64-bit     PJT
 #
 #
 
