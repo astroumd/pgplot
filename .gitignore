@@ -46,3 +46,7 @@ _deps
 _libs
 *_ds
 docwork
+makefile
+grfont.dat
+grpckg1.inc
+pgplot.inc
