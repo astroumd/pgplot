@@ -61,7 +61,7 @@ C  FMIN   (input)  : length of minor tick marks, as fraction of major.
 C  DISP   (input)  : displacement of baseline of tick labels to
 C                    right of axis, in units of the character height.
 C  ORIENT (input)  : orientation of label text, in degrees; angle between
-C                    baseline of text and direction of axis (0-360°).
+C                    baseline of text and direction of axis (0-360).
 C--
 C 25-Mar-1997 - new routine [TJP].
 C-----------------------------------------------------------------------
