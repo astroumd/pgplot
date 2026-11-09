@@ -1016,7 +1016,7 @@ static int write_wrapper(Sysattr *sys, Function *fn)
 	      sys->ltrue, sys->lfalse);
       break;
     case DAT_CHR:
-      fprintf(wfile, "  int len_%s = ", arg->name);
+      fprintf(wfile, "  size_t len_%s = ", arg->name);
       if(arg->length_arg < 0) {
 	if(arg->is_scalar)
 	  fprintf(wfile, "1;\n");
